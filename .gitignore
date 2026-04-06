@@ -3,9 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.csv
+
 # Virtual environments
 .venv/
 venv/
 
-# Test artifacts
-.pytest_cache/
+# Node
+node_modules/
+package-lock.json
+
+# Mac
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
