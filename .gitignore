@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.csv
+# Virtual environments
+.venv/
+venv/
+
+# Test artifacts
+.pytest_cache/
