@@ -1,0 +1,33 @@
+# Data Loading & Cleaning
+pandas
+numpy
+openpyxl
+
+# Fuzzy Fire Name Matching (for merging datasets)
+thefuzz
+python-Levenshtein
+
+# Visualization & EDA
+matplotlib
+seaborn
+
+# Notebook
+jupyter
+notebook
+ipykernel
+
+#Feature building
+scikit-learn
+
+#model building
+xgboost
+imbalanced-learn
+
+#saving model
+joblib
+
+
+thefuzz
+
+
+
