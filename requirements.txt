@@ -1,4 +1,5 @@
-pandas
-scikit-learn
+pandas>=2.2.0
+scikit-learn>=1.5.0
 matplotlib
-numpy
+numpy>=1.26.0
+joblib>=1.4.0
