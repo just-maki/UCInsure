@@ -54,11 +54,11 @@
   transition: all 0.3s;
 }
 
-.sign-in { background-color: black; color: white; }
-.sign-in:hover { background-color: green; }
+.sign-in { background-color: transparent;  border: 1px solid green; color: white; }
+.sign-in:hover { background-color: green;}
 
-.create-account { background-color: green; color: white; }
-.create-account:hover { opacity: 0.8; }
+.create-account { background-color: green; border: 1px solid rgb(223, 240, 223); color: white; }
+.create-account:hover { background-color: rgb(3, 49, 3); border: 1px solid rgb(5, 73, 5);}
 
 /* Hamburger button */
 .mobile-menu-button {
