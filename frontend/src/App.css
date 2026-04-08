@@ -60,9 +60,12 @@
   display: flex;
   flex-direction: column;
   gap: 25px;
-  place-content: center;
-  place-items: center;
   flex-grow: 1;
+
+  place-content: normal;
+  place-items: stretch;  
+  width: 100%;
+  padding: 2rem 4rem; 
 
   @media (max-width: 1024px) {
     padding: 32px 20px 24px;
@@ -70,11 +73,25 @@
   }
 }
 
+.hero {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+}
+
 #next-steps {
   display: flex;
   border-top: 1px solid var(--border);
   text-align: left;
-
+  
   & > div {
     flex: 1 1 0;
     padding: 32px;
@@ -153,13 +170,6 @@
   }
 }
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
 
 .ticks {
   position: relative;
@@ -181,4 +191,43 @@
     right: 0;
     border-right-color: var(--border);
   }
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  background-color: #121212; /* whatever your bg is */
+  color: white;
+  font-family: sans-serif;
+}
+
+
+.page-container {
+  min-height: calc(100vh - 120px); /* navbar + footer height approx */
+  width: 100%;
+  padding: 0;
+}
+
+nav, footer {
+  width: 100%;
+  max-width: none;
+}
+
+.btn {
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  border: 2px solid green;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  background: green;
+  color: white;
 }

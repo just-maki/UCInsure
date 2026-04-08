@@ -4,8 +4,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark } from '@fortawesome/free-solid-svg-icons';
 
 const MENU = [
-  { title: "Home", link: "#" },
-  { title: "Uploads", link: "#" },
+  { title: "Home", link: "/" },
+  { title: "Uploads", link: "/upload" },
   { title: "Analysis", link: "#" },
   { title: "About", link: "#" }
 ];
