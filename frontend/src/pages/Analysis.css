@@ -1,0 +1,157 @@
+.analysis-container {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: white;
+}
+
+/* RISK */
+.risk-section {
+  margin-top: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.risk-value {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+/* IMPORTANT: anchor system */
+.risk-bar-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* BAR */
+.risk-bar {
+  position: relative;
+  height: 20px;
+  border-radius: 10px;
+  background: #333;
+  overflow: hidden;
+}
+
+.risk-gradient {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, green, yellow, red);
+}
+
+/* ARROW (triangle only) */
+.risk-arrow {
+  position: absolute;
+  top: 22px;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition:
+    left 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+}
+
+.risk-arrow.show {
+  opacity: 1;
+}
+
+/* triangle pointing UP */
+.risk-arrow::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid white;
+}
+
+/* NUMBERS */
+.risk-numbers {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.risk-numbers span {
+  flex: 1;
+  text-align: center;
+}
+
+/* LEGEND */
+.risk-legend {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.risk-legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.green-box, .yellow-box, .red-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.green-box { background: green; }
+.yellow-box { background: yellow; }
+.red-box { background: red; }
+
+/* GRAPH */
+.graph-section {
+  margin-top: 3rem;
+}
+
+.graph-desc {
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.graph-image {
+  margin-top: 1.5rem;
+  max-width: 100%;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.graph-image:hover {
+  transform: scale(1.03);
+}
+
+/* FADE */
+.fade-section {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+}
+
+.fade-section.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ZOOM */
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+}
+
+.zoomed-image {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 10px;
+}
