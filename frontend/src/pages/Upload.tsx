@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Upload.css";
 
 type UploadedFile = {
@@ -8,8 +9,13 @@ type UploadedFile = {
 };
 
 const Upload: React.FC = () => {
+  const navigate = useNavigate();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // NEW: analysis state
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
 
   const isCSV = (file: File) => {
     return file.name.toLowerCase().endsWith(".csv");
@@ -69,8 +75,24 @@ const Upload: React.FC = () => {
   };
 
   const handleAnalyze = () => {
-    console.log("Analyzing files:", files);
-    // later → send to backend
+    setIsAnalyzing(true);
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      setAnalysisProgress(progress);
+
+      if (progress >= 100) {
+        clearInterval(interval);
+
+        // small delay so it feels smoother
+        setTimeout(() => {
+          navigate("/analysis", {
+            state: { files }
+          });
+        }, 400);
+      }
+    }, 150);
   };
 
   return (
@@ -90,7 +112,7 @@ const Upload: React.FC = () => {
         <p>Drag & drop your CSV file here</p>
         <span>or</span>
 
-        <label className="upload-button">
+        <label className="upload-button btn">
           Choose File
           <input
             type="file"
@@ -103,7 +125,6 @@ const Upload: React.FC = () => {
         </label>
       </div>
 
-      {/* Uploaded files */}
       <div className="file-list">
         {files.map((f, index) => (
           <div key={index} className="file-card">
@@ -144,12 +165,28 @@ const Upload: React.FC = () => {
         ))}
       </div>
 
-      {/* Analyze button */}
       <div className={`analyze-container ${files.length > 0 ? "show" : ""}`}>
         <button className="analyze-btn btn" onClick={handleAnalyze}>
           Analyze Files
         </button>
       </div>
+
+      {isAnalyzing && (
+        <div className="analysis-overlay">
+          <div className="analysis-modal">
+            <h3>Analyzing Data...</h3>
+
+            <div className="analysis-bar">
+              <div
+                className="analysis-fill"
+                style={{ width: `${analysisProgress}%` }}
+              />
+            </div>
+
+            <p>{analysisProgress}%</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
