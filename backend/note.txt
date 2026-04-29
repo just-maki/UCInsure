@@ -1,0 +1,8 @@
+To run the backend, navigate to the backend folder
+Then type "pip install uvicorn"
+Then type "pip install fastapi uvicorn python-multipart" into the terminal as well
+Then type "uvicorn main:app --reload"
+From here there hsould be a portion that says "INFO: Uvicorn running on http:[insert link] (Press CTRL+C to quit)"
+Just copy and paste the link
+Do the link then insert a "/docs#/" to see the debugger/logging of each POST/GET
+ALSO MAKE SURE THAT YOU CHANGE THE COMMENTED AREA DEPENDING ON THE LOCAL HOST LINK, IT WILL NEED TO BE CHANGED TO A DIFF LINK EACH TIME
