@@ -1,6 +1,6 @@
 # UCInsure
 
-Multi-hazard actuarial risk model for California homeowners insurance that quantifies wildfire, flood, and hurricane exposure using geospatial data, predictive modeling, and dynamic risk-tier scoring.
+Climate-risk insurance model that uses geospatial data and machine learning to assess flood, hurricane, and wildfire risks and generate region-wise risk scores for improved actuarial and insurance decision-making.
 
 ## Use Case Implementations
 
