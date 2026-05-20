@@ -74,25 +74,53 @@ const Upload: React.FC = () => {
     setFiles((prev) => prev.filter((f) => f.file !== file));
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    // Pick the first file that has a model selected, or fall back to the first file.
+    const target = files.find((f) => f.model !== "") ?? files[0];
+    if (!target) return;
+
     setIsAnalyzing(true);
+    setAnalysisProgress(0);
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      setAnalysisProgress(progress);
-
-      if (progress >= 100) {
-        clearInterval(interval);
-
-        // small delay so it feels smoother
-        setTimeout(() => {
-          navigate("/analysis", {
-            state: { files }
-          });
-        }, 400);
-      }
+    // Animate the progress bar while the request is in-flight.
+    let fakeProgress = 0;
+    const ticker = setInterval(() => {
+      fakeProgress = Math.min(fakeProgress + 4, 85);
+      setAnalysisProgress(fakeProgress);
     }, 150);
+
+    try {
+      const form = new FormData();
+      form.append("file", target.file);
+      form.append("model", target.model || "flood");
+
+      const response = await fetch("/api/predict", {
+        method: "POST",
+        body: form,
+      });
+
+      clearInterval(ticker);
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: response.statusText }));
+        alert(`Analysis failed: ${JSON.stringify(err.detail ?? err)}`);
+        setIsAnalyzing(false);
+        setAnalysisProgress(0);
+        return;
+      }
+
+      const result = await response.json();
+      setAnalysisProgress(100);
+
+      setTimeout(() => {
+        navigate("/analysis", { state: { result } });
+      }, 400);
+    } catch (err) {
+      clearInterval(ticker);
+      alert(`Network error: ${err}`);
+      setIsAnalyzing(false);
+      setAnalysisProgress(0);
+    }
   };
 
   return (
