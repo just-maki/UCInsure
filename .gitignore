@@ -30,3 +30,4 @@ venv/
 
 # Test artifacts
 .pytest_cache/
+src/wildfire_model/models/
