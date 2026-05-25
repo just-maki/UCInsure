@@ -10,3 +10,4 @@ geopandas >= 1.0.0
 pyarrow >= 14.0.2
 pygris > 0.1.0
 duckdb>= 0.10.0
+tqdm
