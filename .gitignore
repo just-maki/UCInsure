@@ -30,4 +30,7 @@ venv/
 
 # Test artifacts
 .pytest_cache/
-src/wildfire_model/models/
+
+node_modules/
+.DS_Store
+.env
