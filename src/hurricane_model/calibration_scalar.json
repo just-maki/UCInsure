@@ -1,5 +1,5 @@
 {
-  "scalar": 1.1119279861450195,
+  "scalar": 1.1485143899917603,
   "alpha": 2.0,
   "description": "Multiply XGBoost prediction x lambda x scalar to get calibrated AEL"
 }
