@@ -1,10 +1,8 @@
-# %%
 import os
 import numpy as np
 import pandas as pd
-
-
-# %%
+ 
+# Reuse everything already loaded by inference.py (single source of truth)
 from inference import (
     _model,
     _label_encoders,
@@ -17,14 +15,7 @@ from inference import (
 )
  
 _GRID_RES = 0.5
-
-# %%
-import os
-print("CWD:", os.getcwd())
-print("inference.py here?", os.path.exists("inference.py"))
-print("batch_inference.py here?", os.path.exists("batch_inference.py"))
-
-# %%
+ 
 def _encode_df(df: pd.DataFrame) -> pd.DataFrame:
     """Encode all feature columns for a whole DataFrame at once.
     Unseen categories -> 'UNKNOWN' index. Missing columns -> 0 / 'UNKNOWN'."""
@@ -91,21 +82,71 @@ def _run_batch(df: pd.DataFrame) -> dict:
         "_ael":                   ael,        # internal, for pooling
         "_scores":                scores,     # internal, for pooling
     }
-
-# %%
-def predict_batch(csv_path: str) -> dict:
+ 
+ 
+def _scored_csv_path(csv_path: str) -> str:
+    """Same folder as input, with _scored suffix."""
+    base, ext = os.path.splitext(csv_path)
+    return f"{base}_scored.csv"
+ 
+ 
+def _write_scored_csv(df: pd.DataFrame, ael: np.ndarray,
+                      scores: np.ndarray, flags: np.ndarray,
+                      out_path: str) -> None:
+    """Append prediction columns to the input rows and write to disk."""
+    out = df.copy()
+    out["predicted_ael"]  = np.round(ael, 2)
+    out["risk_score"]     = scores            # already rounded in _scores_from_ael
+    out["low_data_flag"]  = flags
+    out.to_csv(out_path, index=False)
+ 
+ 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+def predict_batch(csv_path: str, write_csv: bool = True) -> dict:
     df  = pd.read_csv(csv_path)
     res = _run_batch(df)
+ 
+    scored_path = None
+    if write_csv:
+        scored_path = _scored_csv_path(csv_path)
+        _, flags = _lambda_for_df(df)
+        _write_scored_csv(df, res["_ael"], res["_scores"], flags, scored_path)
+ 
+    # ---- yearly_totals (per-year grand totals from yearOfLoss + AEL) --------
+    # Pure read-only grouping; never mutates the input rows.
+    yearly_totals = None
+    if "yearOfLoss" in df.columns:
+        years = pd.to_numeric(df["yearOfLoss"], errors="coerce")
+        valid = years.notna()
+        if valid.any():
+            # Build a tiny frame just for the groupby — leaves df untouched
+            tmp = pd.DataFrame({
+                "year": years[valid].astype(int).values,
+                "ael":  np.asarray(res["_ael"])[valid.values],
+            })
+            grouped = tmp.groupby("year", sort=True)["ael"].sum()
+            # Only meaningful if there's more than one year
+            if len(grouped) >= 1:
+                yearly_totals = {
+                    "x": [int(y) for y in grouped.index.tolist()],
+                    "y": [round(float(v), 2) for v in grouped.values.tolist()],
+                }
+ 
     return {
         "total_predicted_claims": round(res["total_predicted_claims"], 2),
         "property_count":         res["property_count"],
         "portfolio_score":        res["mean_score"],
         "max_score":              res["max_score"],
         "low_data_count":         res["low_data_count"],
+        "scored_csv_path":        scored_path,
+        "yearly_totals":          yearly_totals,
     }
  
  
-def predict_multi_year(csv_paths: list, year_labels: list = None) -> dict:
+def predict_multi_year(csv_paths: list, year_labels: list = None,
+                       write_csv: bool = True) -> dict:
     if year_labels is not None and len(year_labels) != len(csv_paths):
         raise ValueError("year_labels length must match csv_paths length.")
  
@@ -114,11 +155,18 @@ def predict_multi_year(csv_paths: list, year_labels: list = None) -> dict:
     y_axis        = []
     grand_total   = 0.0
     pooled_scores = []
+    scored_paths  = []
  
     for idx, path in enumerate(csv_paths):
         label = year_labels[idx] if year_labels is not None else idx + 1
         df    = pd.read_csv(path)
         res   = _run_batch(df)
+ 
+        scored_path = None
+        if write_csv:
+            scored_path = _scored_csv_path(path)
+            _, flags = _lambda_for_df(df)
+            _write_scored_csv(df, res["_ael"], res["_scores"], flags, scored_path)
  
         yearly.append({
             "year":                   label,
@@ -127,11 +175,13 @@ def predict_multi_year(csv_paths: list, year_labels: list = None) -> dict:
             "score":                  res["mean_score"],
             "max_score":              res["max_score"],
             "low_data_count":         res["low_data_count"],
+            "scored_csv_path":        scored_path,
         })
         x_axis.append(label)
         y_axis.append(round(res["total_predicted_claims"], 2))
         grand_total += res["total_predicted_claims"]
         pooled_scores.extend(res["_scores"].tolist())
+        scored_paths.append(scored_path)
  
     overall_score = round(float(np.mean(pooled_scores)), 2) if pooled_scores else 1.0
  
@@ -140,9 +190,13 @@ def predict_multi_year(csv_paths: list, year_labels: list = None) -> dict:
         "line_graph":                      {"x": x_axis, "y": y_axis},
         "overall_total_predicted_claims":  round(grand_total, 2),
         "overall_score":                   overall_score,
+        "scored_csv_paths":                scored_paths,
     }
-
-# %%
+ 
+ 
+# ---------------------------------------------------------------------------
+# Smoke test
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
@@ -153,5 +207,3 @@ if __name__ == "__main__":
         print(json.dumps(out, indent=2))
     else:
         print("Usage: python batch_inference.py year1.csv year2.csv year3.csv")
-
-
