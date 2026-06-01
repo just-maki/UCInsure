@@ -2,6 +2,24 @@
   padding: 3rem 2rem;
   text-align: center;
   color: white;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── Map section ───────────────────────────────────────────── */
+.map-section {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.map-section h3 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.map-fade {
+  /* slightly earlier delay so map appears before the score bar */
+  transition-delay: 0s;
 }
 
 /* RISK */
@@ -154,4 +172,51 @@
   max-width: 90%;
   max-height: 90%;
   border-radius: 10px;
+}
+
+/* ── Analysis page header ───────────────────────────────────── */
+.analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.analysis-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.analysis-title-row h2 { margin: 0; }
+
+.model-badge {
+  display: inline-block;
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge-flood     { background: rgba(33,150,243,0.18); color: #64b5f6; border: 1px solid rgba(33,150,243,0.38); }
+.badge-hurricane { background: rgba(156,39,176,0.18); color: #ce93d8; border: 1px solid rgba(156,39,176,0.38); }
+.badge-wildfire  { background: rgba(255,87,34,0.18);  color: #ff8a65; border: 1px solid rgba(255,87,34,0.38); }
+
+.clear-btn {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgba(239,68,68,0.38);
+  border-radius: 8px;
+  background: rgba(239,68,68,0.08);
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.clear-btn:hover {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.65);
 }
