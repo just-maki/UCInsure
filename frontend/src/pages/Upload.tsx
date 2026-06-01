@@ -2,107 +2,112 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Upload.css";
 
-type UploadedFile = {
-  file: File;
-  progress: number;
-  model: string;
+type ModelType = "flood" | "hurricane" | "wildfire";
+
+interface ModelInfo {
+  label: string;
+  icon: string;
+  description: string;
+  dataSource: string;
+  accentColor: string;
+}
+
+const MODEL_INFO: Record<ModelType, ModelInfo> = {
+  flood: {
+    label: "Flood",
+    icon: "🌊",
+    description:
+      "Predicts building damage risk from flood events using FEMA NFIP claims data.",
+    dataSource: "FEMA OpenFEMA NFIP Claims CSV",
+    accentColor: "#2196f3",
+  },
+  hurricane: {
+    label: "Hurricane",
+    icon: "🌀",
+    description:
+      "Predicts expected annual loss from hurricanes per census tract using NRI data.",
+    dataSource: "FEMA National Risk Index (NRI) CSV",
+    accentColor: "#9c27b0",
+  },
+  wildfire: {
+    label: "Wildfire",
+    icon: "🔥",
+    description:
+      "Predicts wildfire insurance risk by fire severity using CAL FIRE incident data.",
+    dataSource: "Merged CAL FIRE Perimeters + Damage CSV",
+    accentColor: "#ff5722",
+  },
 };
 
 const Upload: React.FC = () => {
   const navigate = useNavigate();
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+
+  // Step 1: model selection
+  const [selectedModel, setSelectedModel] = useState<ModelType | null>(null);
+
+  // Step 2: file upload
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  // NEW: analysis state
+  // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
 
-  const isCSV = (file: File) => {
-    return file.name.toLowerCase().endsWith(".csv");
-  };
+  const isCSV = (f: File) => f.name.toLowerCase().endsWith(".csv");
 
-  const simulateUpload = (file: File) => {
-    const newFile: UploadedFile = {
-      file,
-      progress: 0,
-      model: "",
-    };
-
-    setFiles((prev) => [...prev, newFile]);
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.file === file ? { ...f, progress } : f
-        )
-      );
-
-      if (progress >= 100) clearInterval(interval);
-    }, 200);
-  };
-
-  const handleFile = (file: File) => {
-    if (!isCSV(file)) {
+  const handleFile = (f: File) => {
+    if (!isCSV(f)) {
       alert("Only CSV files are allowed.");
       return;
     }
-
-    simulateUpload(file);
+    setFile(f);
+    setUploadProgress(0);
+    let p = 0;
+    const interval = setInterval(() => {
+      p += 10;
+      setUploadProgress(p);
+      if (p >= 100) clearInterval(interval);
+    }, 80);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
   };
 
-  const updateModel = (file: File, model: string) => {
-    setFiles((prev) =>
-      prev.map((f) =>
-        f.file === file ? { ...f, model } : f
-      )
-    );
-  };
-
-  const removeFile = (file: File) => {
-    setFiles((prev) => prev.filter((f) => f.file !== file));
+  const selectModel = (model: ModelType) => {
+    setSelectedModel(model);
+    setFile(null);
+    setUploadProgress(0);
   };
 
   const handleAnalyze = async () => {
-    // Pick the first file that has a model selected, or fall back to the first file.
-    const target = files.find((f) => f.model !== "") ?? files[0];
-    if (!target) return;
+    if (!file || !selectedModel) return;
 
     setIsAnalyzing(true);
     setAnalysisProgress(0);
 
-    // Animate the progress bar while the request is in-flight.
     let fakeProgress = 0;
     const ticker = setInterval(() => {
-      fakeProgress = Math.min(fakeProgress + 4, 85);
+      fakeProgress = Math.min(fakeProgress + 3, 88);
       setAnalysisProgress(fakeProgress);
-    }, 150);
+    }, 180);
 
     try {
       const form = new FormData();
-      form.append("file", target.file);
-      form.append("model", target.model || "flood");
+      form.append("file", file);
+      form.append("model", selectedModel);
 
-      const response = await fetch("/api/predict", {
-        method: "POST",
-        body: form,
-      });
+      const response = await fetch("/api/predict", { method: "POST", body: form });
 
       clearInterval(ticker);
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ detail: response.statusText }));
+        const err = await response
+          .json()
+          .catch(() => ({ detail: response.statusText }));
         alert(`Analysis failed: ${JSON.stringify(err.detail ?? err)}`);
         setIsAnalyzing(false);
         setAnalysisProgress(0);
@@ -111,10 +116,7 @@ const Upload: React.FC = () => {
 
       const result = await response.json();
       setAnalysisProgress(100);
-
-      setTimeout(() => {
-        navigate("/analysis", { state: { result } });
-      }, 400);
+      setTimeout(() => navigate("/analysis", { state: { result } }), 400);
     } catch (err) {
       clearInterval(ticker);
       alert(`Network error: ${err}`);
@@ -123,94 +125,128 @@ const Upload: React.FC = () => {
     }
   };
 
+  const info = selectedModel ? MODEL_INFO[selectedModel] : null;
+
   return (
     <div className="upload-container">
-      <h2>Upload Your Dataset</h2>
+      {/* ── Step 1: Model selection ────────────────────────────────────── */}
+      <h2>Choose a Risk Model</h2>
+      <p className="upload-subtitle">
+        Select the risk model, then upload the matching dataset.
+      </p>
 
-      {/* Drop zone */}
-      <div
-        className={`drop-zone ${isDragging ? "dragging" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-      >
-        <p>Drag & drop your CSV file here</p>
-        <span>or</span>
-
-        <label className="upload-button btn">
-          Choose File
-          <input
-            type="file"
-            accept=".csv"
-            hidden
-            onChange={(e) =>
-              e.target.files && handleFile(e.target.files[0])
-            }
-          />
-        </label>
+      <div className="model-cards">
+        {(Object.entries(MODEL_INFO) as [ModelType, ModelInfo][]).map(
+          ([key, m]) => (
+            <button
+              key={key}
+              className={`model-card ${selectedModel === key ? "selected" : ""}`}
+              style={{ "--card-accent": m.accentColor } as React.CSSProperties}
+              onClick={() => selectModel(key)}
+            >
+              <span className="model-icon">{m.icon}</span>
+              <span className="model-label">{m.label}</span>
+              <span className="model-desc">{m.description}</span>
+              <span className="model-source">{m.dataSource}</span>
+            </button>
+          )
+        )}
       </div>
 
-      <div className="file-list">
-        {files.map((f, index) => (
-          <div key={index} className="file-card">
-            <div className="file-info">
-              <p className="file-name">{f.file.name}</p>
+      {/* ── Step 2: File upload ────────────────────────────────────────── */}
+      {selectedModel && info && (
+        <>
+          <h3 className="upload-step-title">
+            Upload {info.label} Dataset
+          </h3>
 
-              {f.progress < 100 && (
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${f.progress}%` }}
+          <div
+            className={`drop-zone ${isDragging ? "dragging" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            {file ? (
+              <div className="file-ready">
+                <span className="file-name-display">📄 {file.name}</span>
+                <button
+                  className="remove-file-btn"
+                  onClick={() => {
+                    setFile(null);
+                    setUploadProgress(0);
+                  }}
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            ) : (
+              <>
+                <p>Drag & drop your CSV here</p>
+                <span>or</span>
+                <label className="upload-button btn">
+                  Choose File
+                  <input
+                    type="file"
+                    accept=".csv"
+                    hidden
+                    onChange={(e) =>
+                      e.target.files && handleFile(e.target.files[0])
+                    }
                   />
-                </div>
-              )}
-            </div>
-
-            <div className="file-actions">
-              <select
-                value={f.model}
-                onChange={(e) =>
-                  updateModel(f.file, e.target.value)
-                }
-              >
-                <option value="">Select Model</option>
-                <option value="wildfire">Wildfire</option>
-                <option value="flood">Flood</option>
-                <option value="hurricane">Hurricane</option>
-              </select>
-
-              <button
-                className="delete-btn"
-                onClick={() => removeFile(f.file)}
-              >
-                ✕
-              </button>
-            </div>
+                </label>
+                <p className="expected-source">
+                  Expected: <em>{info.dataSource}</em>
+                </p>
+                <a
+                  className="sample-download-link"
+                  href={`/api/sample/${selectedModel}`}
+                  download
+                >
+                  ⬇ Download sample CSV
+                </a>
+              </>
+            )}
           </div>
-        ))}
-      </div>
 
-      <div className={`analyze-container ${files.length > 0 ? "show" : ""}`}>
-        <button className="analyze-btn btn" onClick={handleAnalyze}>
-          Analyze Files
-        </button>
-      </div>
+          {file && uploadProgress < 100 && (
+            <div className="progress-bar upload-progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
 
+          <div
+            className={`analyze-container ${
+              file && uploadProgress >= 100 ? "show" : ""
+            }`}
+          >
+            <button
+              className="analyze-btn btn"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? "Analyzing…" : `Analyze ${info.label} Dataset`}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Analysis overlay ───────────────────────────────────────────── */}
       {isAnalyzing && (
         <div className="analysis-overlay">
           <div className="analysis-modal">
-            <h3>Analyzing Data...</h3>
-
+            <h3>Running {info?.label} Model…</h3>
             <div className="analysis-bar">
               <div
                 className="analysis-fill"
                 style={{ width: `${analysisProgress}%` }}
               />
             </div>
-
             <p>{analysisProgress}%</p>
           </div>
         </div>
