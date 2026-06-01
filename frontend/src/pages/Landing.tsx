@@ -130,7 +130,45 @@ const Landing: React.FC = () => {
       answer:
         "Right now the project is local-only. The FastAPI backend runs on localhost:8000 and the Vite frontend runs on localhost:5173.",
     },
+    
   ];
+
+  const COLUMN_HELP: Record<string, string> = {
+    // Flood
+    dateOfLoss: "Date the flood event occurred and damage was recorded.",
+    buildingDamageAmount: "Estimated total structural damage to the building.",
+    amountPaidOnBuildingClaim: "Insurance payout for building repairs.",
+    amountPaidOnContentsClaim: "Insurance payout for damaged contents inside the property.",
+    latitude: "Geographic latitude of the property location.",
+    longitude: "Geographic longitude of the property location.",
+    state: "U.S. state where the property is located.",
+    floodZone: "FEMA flood zone classification (e.g., AE, X, A).",
+    occupancyType: "Type of property use (residential, commercial, etc.).",
+
+    // Hurricane
+    TRACTFIPS: "Unique census tract identifier used by FEMA.",
+    STATE: "Full state name.",
+    STATEABBRV: "Two-letter state abbreviation.",
+    COUNTY: "County where the tract is located.",
+    CENTLAT: "Center latitude of the census tract.",
+    CENTLON: "Center longitude of the census tract.",
+    AREA: "Land area of the census tract.",
+    POPULATION: "Total population in the tract.",
+    BUILDVALUE: "Total estimated building/property value.",
+    HRCN_EVNTS: "Historical number of hurricane events affecting the tract.",
+    HRCN_EALB: "Estimated annual loss from hurricanes (building-related).",
+
+    // Wildfire
+    YEAR_: "Year the wildfire event was recorded.",
+    AGENCY: "Agency responsible for reporting the wildfire.",
+    UNIT_ID: "Unique identifier for the fire management unit.",
+    FIRE_NAME: "Name of the wildfire incident.",
+    gis_acres: "Total burned area measured in acres.",
+    CAUSE: "Code representing cause of fire (natural, human, unknown).",
+    DLAT: "Latitude of the fire location.",
+    DLON: "Longitude of the fire location.",
+    OBJECTIVE: "Fire management objective (suppression, monitoring, etc.).",
+  };
 
   return (
     <main className="landing-page">
@@ -307,6 +345,128 @@ const Landing: React.FC = () => {
           </article>
         </div>
       </section>
+
+<section className="csv-section">
+  <div className="faq-header">
+    <p className="section-kicker">Data Format Guide</p>
+    <h2>Required CSV Structure by Model</h2>
+  </div>
+
+  <div className="csv-grid">
+
+    <div className="csv-card flood">
+      <h3>🌊 Flood Model</h3>
+      <p className="csv-sub">FEMA NFIP Claims Dataset</p>
+
+      <table>
+        <tbody>
+          {[
+            "dateOfLoss",
+            "buildingDamageAmount",
+            "amountPaidOnBuildingClaim",
+            "amountPaidOnContentsClaim",
+            "latitude",
+            "longitude",
+            "state",
+            "floodZone",
+            "occupancyType",
+          ].map((col) => (
+            <tr key={col}>
+              <td className="csv-cell">
+                <span className="csv-tooltip-wrapper">
+                  <span className="csv-hover">
+                    {col}
+                  </span>
+
+                  <div className="csv-tooltip">
+                    {COLUMN_HELP[col]}
+                  </div>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div className="csv-card hurricane">
+      <h3>🌀 Hurricane Model</h3>
+      <p className="csv-sub">FEMA NRI Census Tracts</p>
+
+      <table>
+        <tbody>
+          {[
+            "TRACTFIPS",
+            "STATE",
+            "STATEABBRV",
+            "COUNTY",
+            "CENTLAT",
+            "CENTLON",
+            "AREA",
+            "POPULATION",
+            "BUILDVALUE",
+            "HRCN_EVNTS",
+            "HRCN_EALB",
+          ].map((col) => (
+            <tr key={col}>
+              <td className="csv-cell">
+                <span className="csv-tooltip-wrapper">
+                  <span className="csv-hover">
+                    {col}
+                  </span>
+
+                  <div className="csv-tooltip">
+                    {COLUMN_HELP[col]}
+                  </div>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div className="csv-card wildfire">
+      <h3>🔥 Wildfire Model</h3>
+      <p className="csv-sub">CAL FIRE Incident Data</p>
+
+      <table>
+        <tbody>
+          {[
+            "YEAR_",
+            "STATE",
+            "AGENCY",
+            "UNIT_ID",
+            "FIRE_NAME",
+            "gis_acres",
+            "CAUSE",
+            "DLAT",
+            "DLON",
+            "COUNTY",
+            "OBJECTIVE",
+          ].map((col) => (
+            <tr key={col}>
+              <td className="csv-cell">
+                <span className="csv-tooltip-wrapper">
+                  <span className="csv-hover">
+                    {col}
+                  </span>
+
+                  <div className="csv-tooltip">
+                    {COLUMN_HELP[col]}
+                  </div>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+
 
       <section className="faq-section">
         <div className="faq-header">

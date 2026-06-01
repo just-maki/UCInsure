@@ -492,3 +492,128 @@
 .green-dot  { background: #22c55e; }
 .yellow-dot { background: #f59e0b; }
 .red-dot    { background: #ef4444; }
+
+.csv-section {
+  max-width: 1100px;
+  margin: 3rem auto 0;
+}
+
+.csv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.csv-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 18px;
+  padding: 1.2rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+}
+
+.csv-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f8fafc;
+}
+
+.csv-sub {
+  margin: 0.3rem 0 1rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.csv-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.csv-card td {
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+/* Accent borders */
+.csv-card.flood {
+  border-top: 3px solid #67e8f9;
+}
+
+.csv-card.hurricane {
+  border-top: 3px solid #fbbf24;
+}
+
+.csv-card.wildfire {
+  border-top: 3px solid #fb7185;
+}
+
+.csv-cell {
+  position: relative;
+}
+
+.csv-hover {
+  cursor: help;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+  transition: color 0.15s ease;
+}
+
+.csv-hover:hover {
+  color: #5eead4;
+}
+
+.csv-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.csv-tooltip {
+  position: absolute;
+  left: 0;
+  top: 120%;
+  z-index: 999;
+
+  min-width: 220px;
+  max-width: 280px;
+
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+
+  background: rgba(6, 12, 20, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.4;
+
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+
+  transition: all 0.15s ease;
+}
+
+.csv-tooltip-wrapper:hover .csv-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.csv-tooltip-wrapper:hover .csv-hover {
+  color: #5eead4;
+  border-bottom: 1px dashed rgba(94, 234, 212, 0.6);
+}
+
+.csv-card {
+  overflow: visible;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .csv-grid {
+    grid-template-columns: 1fr;
+  }
+}
