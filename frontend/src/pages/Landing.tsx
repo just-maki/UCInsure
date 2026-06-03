@@ -189,6 +189,7 @@ const Landing: React.FC = () => {
             <span className="map-status">Live</span>
           </div>
 
+          <div className={`heatmap-visual ${selectedModel ? "map-active" : "map-inactive"}`}>
           <div className="heatmap-visual">
             <svg viewBox="0 0 540 280" className="heatmap-svg">
               <defs>
@@ -258,6 +259,7 @@ const Landing: React.FC = () => {
               <div className="risk-level risk-medium"><span />Moderate</div>
               <div className="risk-scale">Hover over a state to inspect its assigned risk band.</div>
               <div className="risk-level risk-low"><span />Low</div>
+            </div>
             </div>
           </div>
         </article>

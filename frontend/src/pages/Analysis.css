@@ -219,4 +219,120 @@
 .clear-btn:hover {
   background: rgba(239,68,68,0.2);
   border-color: rgba(239,68,68,0.65);
+  color: #f87171;
+  transform: translateY(-1px);
+}
+
+.analysis-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.summary-card {
+  border: 1px solid rgba(235, 244, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(19, 24, 37, 0.92),
+    rgba(17, 25, 44, 0.78)
+  );
+  padding: 1rem 1.1rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+  text-align: left;
+}
+
+.summary-card.wide {
+  grid-column: 1 / -1;
+}
+
+.summary-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.4rem;
+}
+
+.summary-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.summary-model {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.summary-distribution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+.summary-distribution b {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.summary-distribution .dot {
+  opacity: 0.4;
+}
+
+@media (max-width: 900px) {
+  .analysis-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analysis-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.download-btn {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgba(94, 234, 169, 0.45);
+  border-radius: 8px;
+  background: rgba(13, 65, 57, 0.1);
+  color: #dcebdf;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.1s;
+}
+
+.download-btn:hover {
+  background: rgba(94, 234, 180, 0.18);
+  border-color: rgba(94, 234, 148, 0.7);
+  color: #5eea7c;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .analysis-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .analysis-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .download-btn,
+  .clear-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.78rem;
+  }
 }

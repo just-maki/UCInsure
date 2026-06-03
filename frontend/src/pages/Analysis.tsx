@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import RiskMap, { type MapPoint } from "../components/RiskMap";
 import "./Analysis.css";
+import jsPDF from "jspdf";
 
 interface PredictResult {
   avgRisk: number;
@@ -19,6 +20,75 @@ const MODEL_META: Record<string, { label: string; cls: string }> = {
   flood:     { label: "Flood",     cls: "badge-flood"     },
   hurricane: { label: "Hurricane", cls: "badge-hurricane" },
   wildfire:  { label: "Wildfire",  cls: "badge-wildfire"  },
+};
+
+const downloadPDF = async (result: PredictResult) => {
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const margin = 14;
+  let y = 20;
+
+  const addTitle = (text: string) => {
+    pdf.setFontSize(16);
+    pdf.text(text, margin, y);
+    y += 10;
+  };
+
+  const addText = (text: string) => {
+    pdf.setFontSize(11);
+    pdf.text(text, margin, y);
+    y += 7;
+  };
+
+  const addSectionGap = () => {
+    y += 6;
+  };
+
+  // HEADER
+  addTitle("UCInsure Risk Analysis Report");
+
+  // MODEL
+  addText(`Model Used: ${result.modelUsed}`);
+
+  addSectionGap();
+
+  // RISK SCORE
+  addTitle("Predicted Risk Score");
+  addText(`${(result.avgRisk * 10).toFixed(2)} / 10`);
+
+  addSectionGap();
+
+  // SUMMARY
+  addTitle("Analysis Summary");
+  addText(`Records Scored: ${result.claimCount.toLocaleString()}`);
+  addText(`Total Damage Paid: $${result.totalDamage.toLocaleString()}`);
+
+  addSectionGap();
+
+  // RISK DISTRIBUTION
+  addTitle("Risk Distribution");
+  addText(
+    `Low: ${result.riskDistribution.low ?? 0} | ` +
+    `Medium: ${result.riskDistribution.medium ?? 0} | ` +
+    `High: ${result.riskDistribution.high ?? 0}`
+  );
+
+  addSectionGap();
+
+  // OPTIONAL: IMAGE ONLY FOR GRAPH (NOT ENTIRE PAGE)
+  if (result.chartUrl) {
+    const img = await fetch(result.chartUrl)
+      .then(res => res.blob())
+      .then(blob => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }));
+
+    pdf.addImage(img, "PNG", margin, y, 180, 80);
+  }
+
+  pdf.save("ucinsure_analysis.pdf");
 };
 
 const GRAPH_COPY: Record<string, { title: string; description: string }> = {
@@ -155,9 +225,19 @@ const Analysis: React.FC = () => {
           <h2>Risk Analysis</h2>
           <span className={`model-badge ${modelMeta.cls}`}>{modelMeta.label}</span>
         </div>
-        <button className="clear-btn" onClick={handleClear} title="Remove this analysis">
-          ✕ Clear
-        </button>
+        <div className="analysis-header">
+          <div className="analysis-actions">
+            <button
+              className="download-btn"
+              onClick={() => apiResult && downloadPDF(apiResult)}
+              >
+              ⬇ Download PDF
+            </button>
+            <button className="clear-btn" onClick={handleClear} title="Remove this analysis">
+              ✕ Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* MAP */}
@@ -226,23 +306,41 @@ const Analysis: React.FC = () => {
       <div className={`fade-section ${showGraph ? "show" : ""}`}>
         <div className="graph-section">
           <h3>Analysis Summary</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <tbody>
-              <tr><td><strong>Records scored</strong></td><td>{apiResult.claimCount.toLocaleString()}</td></tr>
-              <tr><td><strong>Total damage paid</strong></td><td>${apiResult.totalDamage.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td></tr>
-              <tr><td><strong>Model</strong></td><td>{apiResult.modelUsed}</td></tr>
+            <div className="analysis-summary-grid">
+              <div className="summary-card">
+                <div className="summary-label">Records Scored</div>
+                <div className="summary-value">
+                  {apiResult.claimCount.toLocaleString()}
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-label">Total Damage Paid</div>
+                <div className="summary-value">
+                  ${apiResult.totalDamage.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-label">Model Used</div>
+                <div className="summary-value summary-model">
+                  {apiResult.modelUsed}
+                </div>
+              </div>
+
               {apiResult.riskDistribution && (
-                <tr>
-                  <td><strong>Risk distribution</strong></td>
-                  <td>
-                    Low: {apiResult.riskDistribution.low ?? 0} &nbsp;|&nbsp;
-                    Medium: {apiResult.riskDistribution.medium ?? 0} &nbsp;|&nbsp;
-                    High: {apiResult.riskDistribution.high ?? 0}
-                  </td>
-                </tr>
+                <div className="summary-card wide">
+                  <div className="summary-label">Risk Distribution</div>
+                  <div className="summary-value summary-distribution">
+                    <span><b>Low</b> {apiResult.riskDistribution.low ?? 0}</span>
+                    <span className="dot">•</span>
+                    <span><b>Medium</b> {apiResult.riskDistribution.medium ?? 0}</span>
+                    <span className="dot">•</span>
+                    <span><b>High</b> {apiResult.riskDistribution.high ?? 0}</span>
+                  </div>
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
         </div>
       </div>
 

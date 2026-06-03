@@ -617,3 +617,63 @@
     grid-template-columns: 1fr;
   }
 }
+
+.map-inactive .us-state {
+  fill: #6b7280;
+  opacity: 0.55;
+  transition: all 0.8s ease;
+}
+
+.map-active .us-state {
+  opacity: 0.25;
+  stroke-opacity: 0.4;
+  transition: all 0.8s ease;
+}
+
+.heatmap-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.25);
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+  border-radius: 12px;
+}
+
+.map-active.heatmap-visual::after {
+  opacity: 0;
+}
+
+.us-state.is-model-selected {
+  opacity: 1;
+  filter: grayscale(0) brightness(1.2);
+  stroke: #ffffff;
+  stroke-width: 1.2;
+  transition: all 0.8s ease;
+}
+
+.us-state.is-model-dimmed {
+  opacity: 0.50;
+  filter: grayscale(0.6) blur(0.2px);
+}
+
+.map-active .us-state.is-region-selected { 
+  stroke-opacity: 1;
+  stroke: #04a3ff; 
+  filter: grayscale(0) brightness(1.2);
+  stroke-width: 2.5; 
+  transition: all 0.8s ease;
+}
+
+.us-state.is-both-selected {
+  stroke: #fde68a;
+  filter: grayscale(0) brightness(1.2);
+  stroke-opacity: 1;
+  stroke-width: 2.5;
+}
+
+.map-inactive .us-state.is-region-selected { 
+  stroke: #31e9cd; 
+  stroke-width: 1.7; 
+  transition: all 0.8s ease;
+}
