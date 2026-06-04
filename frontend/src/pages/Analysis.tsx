@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import RiskMap, { type MapPoint } from "../components/RiskMap";
 import jsPDF from "jspdf";
 import "./Analysis.css";
-import jsPDF from "jspdf";
 
 interface PredictResult {
   avgRisk: number;
