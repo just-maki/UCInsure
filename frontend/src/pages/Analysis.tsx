@@ -67,7 +67,7 @@ const downloadPDF = async (result: PredictResult) => {
   addSectionGap();
 
   // RISK DISTRIBUTION
-  addTitle("Risk Distribution");
+  addTitle("Properties by Risk Level");
   addText(
     `Low: ${result.riskDistribution.low ?? 0} | ` +
     `Medium: ${result.riskDistribution.medium ?? 0} | ` +
@@ -76,7 +76,23 @@ const downloadPDF = async (result: PredictResult) => {
 
   addSectionGap();
 
-  // OPTIONAL: IMAGE ONLY FOR GRAPH (NOT ENTIRE PAGE)
+  addTitle("Avg. Cost per Property");
+  const fmtUSD = (v: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(v ?? 0);
+
+  addText(
+    `Low: ${fmtUSD(result.averageCostByRisk?.low ?? 0)} | ` +
+    `Medium: ${fmtUSD(result.averageCostByRisk?.medium ?? 0)} | ` +
+    `High: ${fmtUSD(result.averageCostByRisk?.high ?? 0)}`
+  );
+  
+  addSectionGap();
+
+
   if (result.chartUrl) {
     const img = await fetch(result.chartUrl)
       .then(res => res.blob())
@@ -313,33 +329,67 @@ const Analysis: React.FC = () => {
       <div className={`fade-section ${showGraph ? "show" : ""}`}>
         <div className="graph-section">
           <h3>Analysis Summary</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <tbody>
-              <tr><td><strong>Records scored</strong></td><td>{apiResult.claimCount.toLocaleString()}</td></tr>
-              <tr><td><strong>Total damage paid/estimated</strong></td><td>{formatCurrency(apiResult.totalDamage)}</td></tr>
-              <tr><td><strong>Model</strong></td><td>{apiResult.modelUsed}</td></tr>
-              {apiResult.riskDistribution && (
-                <tr>
-                  <td><strong>Properties by risk level</strong></td>
-                  <td>
-                    Low: {apiResult.riskDistribution.low ?? 0} &nbsp;|&nbsp;
-                    Medium: {apiResult.riskDistribution.medium ?? 0} &nbsp;|&nbsp;
-                    High: {apiResult.riskDistribution.high ?? 0}
-                  </td>
-                </tr>
-              )}
-              {apiResult.averageCostByRisk && (
-                <tr>
-                  <td><strong>Avg. claim/damage cost per property</strong></td>
-                  <td>
-                    Low: {formatCurrency(apiResult.averageCostByRisk.low)} &nbsp;|&nbsp;
-                    Medium: {formatCurrency(apiResult.averageCostByRisk.medium)} &nbsp;|&nbsp;
-                    High: {formatCurrency(apiResult.averageCostByRisk.high)}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="analysis-summary-grid">
+            <div className="summary-card">
+              <div className="summary-label">Records scored</div>
+              <div className="summary-value">
+                {apiResult.claimCount.toLocaleString()}
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Total damage</div>
+              <div className="summary-value">
+                {formatCurrency(apiResult.totalDamage)}
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Model used</div>
+              <div className="summary-model">
+                {apiResult.modelUsed}
+              </div>
+            </div>
+
+            {apiResult.riskDistribution && (
+              <div className="summary-card wide">
+                <div className="summary-label">Properties by risk level</div>
+                <div className="summary-distribution">
+                  <span>
+                    <b>Low:</b> {apiResult.riskDistribution.low ?? 0}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>Medium:</b> {apiResult.riskDistribution.medium ?? 0}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>High:</b> {apiResult.riskDistribution.high ?? 0}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {apiResult.averageCostByRisk && (
+              <div className="summary-card wide">
+                <div className="summary-label">Avg. cost per property</div>
+                <div className="summary-distribution">
+                  <span>
+                    <b>Low:</b> {formatCurrency(apiResult.averageCostByRisk.low)}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>Medium:</b> {formatCurrency(apiResult.averageCostByRisk.medium)}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>High:</b> {formatCurrency(apiResult.averageCostByRisk.high)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
 
