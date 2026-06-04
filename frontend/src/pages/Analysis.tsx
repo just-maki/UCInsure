@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import RiskMap, { type MapPoint } from "../components/RiskMap";
 import jsPDF from "jspdf";
 import "./Analysis.css";
+import jsPDF from "jspdf";
 
 interface PredictResult {
   avgRisk: number;
@@ -25,15 +26,9 @@ const MODEL_META: Record<string, { label: string; cls: string }> = {
 
 const downloadPDF = async (result: PredictResult) => {
   const pdf = new jsPDF("p", "mm", "a4");
+
   const margin = 14;
   let y = 20;
-
-  const formatUSD = (value?: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value ?? 0);
 
   const addTitle = (text: string) => {
     pdf.setFontSize(16);
@@ -47,39 +42,68 @@ const downloadPDF = async (result: PredictResult) => {
     y += 7;
   };
 
+  const addSectionGap = () => {
+    y += 6;
+  };
+
+  // HEADER
   addTitle("UCInsure Risk Analysis Report");
+
+  // MODEL
   addText(`Model Used: ${result.modelUsed}`);
-  y += 6;
 
-  addTitle("Average Predicted Risk Score");
+  addSectionGap();
+
+  // RISK SCORE
+  addTitle("Predicted Risk Score");
   addText(`${(result.avgRisk * 10).toFixed(2)} / 10`);
-  y += 6;
 
+  addSectionGap();
+
+  // SUMMARY
   addTitle("Analysis Summary");
   addText(`Records Scored: ${result.claimCount.toLocaleString()}`);
-  addText(`Total Damage Paid/Estimated: ${formatUSD(result.totalDamage)}`);
-  y += 6;
+  addText(`Total Damage Paid: $${result.totalDamage.toLocaleString()}`);
 
+  addSectionGap();
+
+  // RISK DISTRIBUTION
   addTitle("Properties by Risk Level");
   addText(
     `Low: ${result.riskDistribution.low ?? 0} | ` +
     `Medium: ${result.riskDistribution.medium ?? 0} | ` +
     `High: ${result.riskDistribution.high ?? 0}`
   );
-  y += 6;
 
-  if (result.averageCostByRisk) {
-    addTitle("Avg. Cost per Property");
-    addText(
-      `Low: ${formatUSD(result.averageCostByRisk.low)} | ` +
-      `Medium: ${formatUSD(result.averageCostByRisk.medium)} | ` +
-      `High: ${formatUSD(result.averageCostByRisk.high)}`
-    );
-    y += 6;
-  }
+  addSectionGap();
+
+  addTitle("Avg. Cost per Property");
+  const fmtUSD = (v: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(v ?? 0);
+
+  addText(
+    `Low: ${fmtUSD(result.averageCostByRisk?.low ?? 0)} | ` +
+    `Medium: ${fmtUSD(result.averageCostByRisk?.medium ?? 0)} | ` +
+    `High: ${fmtUSD(result.averageCostByRisk?.high ?? 0)}`
+  );
+  
+  addSectionGap();
+
 
   if (result.chartUrl) {
-    pdf.addImage(result.chartUrl, "PNG", margin, y, 180, 80);
+    const img = await fetch(result.chartUrl)
+      .then(res => res.blob())
+      .then(blob => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }));
+
+    pdf.addImage(img, "PNG", margin, y, 180, 80);
   }
 
   pdf.save("ucinsure_analysis.pdf");
@@ -221,17 +245,18 @@ const Analysis: React.FC = () => {
           <h2>Risk Analysis</h2>
           <span className={`model-badge ${modelMeta.cls}`}>{modelMeta.label}</span>
         </div>
-        <div className="analysis-actions">
-          <button
-            className="download-btn"
-            onClick={() => downloadPDF(apiResult)}
-            type="button"
-          >
-            Download PDF
-          </button>
-          <button className="clear-btn" onClick={handleClear} title="Remove this analysis" type="button">
-            ✕ Clear
-          </button>
+        <div className="analysis-header">
+          <div className="analysis-actions">
+            <button
+              className="download-btn"
+              onClick={() => apiResult && downloadPDF(apiResult)}
+              >
+              ⬇ Download PDF
+            </button>
+            <button className="clear-btn" onClick={handleClear} title="Remove this analysis">
+              ✕ Clear
+            </button>
+          </div>
         </div>
       </div>
 
@@ -308,44 +333,63 @@ const Analysis: React.FC = () => {
           <div className="analysis-summary-grid">
             <div className="summary-card">
               <div className="summary-label">Records scored</div>
-              <div className="summary-value">{apiResult.claimCount.toLocaleString()}</div>
+              <div className="summary-value">
+                {apiResult.claimCount.toLocaleString()}
+              </div>
             </div>
 
             <div className="summary-card">
               <div className="summary-label">Total damage</div>
-              <div className="summary-value">{formatCurrency(apiResult.totalDamage)}</div>
+              <div className="summary-value">
+                {formatCurrency(apiResult.totalDamage)}
+              </div>
             </div>
 
             <div className="summary-card">
               <div className="summary-label">Model used</div>
-              <div className="summary-model">{apiResult.modelUsed}</div>
+              <div className="summary-model">
+                {apiResult.modelUsed}
+              </div>
             </div>
 
             {apiResult.riskDistribution && (
               <div className="summary-card wide">
                 <div className="summary-label">Properties by risk level</div>
                 <div className="summary-distribution">
-                  <span><b>Low:</b> {apiResult.riskDistribution.low ?? 0}</span>
+                  <span>
+                    <b>Low:</b> {apiResult.riskDistribution.low ?? 0}
+                  </span>
                   <span className="dot">|</span>
-                  <span><b>Medium:</b> {apiResult.riskDistribution.medium ?? 0}</span>
+                  <span>
+                    <b>Medium:</b> {apiResult.riskDistribution.medium ?? 0}
+                  </span>
                   <span className="dot">|</span>
-                  <span><b>High:</b> {apiResult.riskDistribution.high ?? 0}</span>
+                  <span>
+                    <b>High:</b> {apiResult.riskDistribution.high ?? 0}
+                  </span>
                 </div>
               </div>
             )}
 
             {apiResult.averageCostByRisk && (
               <div className="summary-card wide">
-                <div className="summary-label">Avg. claim/damage cost per property</div>
+                <div className="summary-label">Avg. cost per property</div>
                 <div className="summary-distribution">
-                  <span><b>Low:</b> {formatCurrency(apiResult.averageCostByRisk.low)}</span>
+                  <span>
+                    <b>Low:</b> {formatCurrency(apiResult.averageCostByRisk.low)}
+                  </span>
                   <span className="dot">|</span>
-                  <span><b>Medium:</b> {formatCurrency(apiResult.averageCostByRisk.medium)}</span>
+                  <span>
+                    <b>Medium:</b> {formatCurrency(apiResult.averageCostByRisk.medium)}
+                  </span>
                   <span className="dot">|</span>
-                  <span><b>High:</b> {formatCurrency(apiResult.averageCostByRisk.high)}</span>
+                  <span>
+                    <b>High:</b> {formatCurrency(apiResult.averageCostByRisk.high)}
+                  </span>
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </div>

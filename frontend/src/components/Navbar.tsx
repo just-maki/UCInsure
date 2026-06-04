@@ -74,6 +74,7 @@ const Navbar: React.FC = () => {
 
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
     const email = String(form.get("email") ?? "").trim().toLowerCase();
@@ -89,19 +90,14 @@ const Navbar: React.FC = () => {
 
     if (authMode === "create") {
       const exists = accounts.find(a => a.email === email);
-      if (exists) {
-        setAuthError("An account with this email already exists.");
-        return;
-      }
+      if (exists) { setAuthError("An account with this email already exists."); return; }
 
       const passwordError = validatePassword(password);
-      if (passwordError) {
-        setAuthError(passwordError);
-        return;
-      }
+      if (passwordError) { setAuthError(passwordError); return; }
 
       const passwordHash = await hashPassword(password);
-      const updatedAccounts = [...accounts, { name, email, passwordHash }];
+      const newAccount: Account = { name, email, passwordHash };
+      const updatedAccounts = [...accounts, newAccount];
 
       localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name, email }));
@@ -111,16 +107,10 @@ const Navbar: React.FC = () => {
     }
 
     const account = accounts.find(a => a.email === email);
-    if (!account) {
-      setAuthError("No account found with this email.");
-      return;
-    }
+    if (!account) { setAuthError("No account found with this email."); return; }
 
     const passwordHash = await hashPassword(password);
-    if (account.passwordHash !== passwordHash) {
-      setAuthError("Incorrect password.");
-      return;
-    }
+    if (account.passwordHash !== passwordHash) { setAuthError("Incorrect password."); return; }
 
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name: account.name, email: account.email }));
     setUser({ name: account.name, email: account.email });
@@ -136,12 +126,7 @@ const Navbar: React.FC = () => {
   const authModal = authMode ? ReactDOM.createPortal(
     <div className="auth-overlay" onClick={() => setAuthMode(null)}>
       <form className="auth-modal" onSubmit={handleAuthSubmit} onClick={(e) => e.stopPropagation()}>
-        <button
-          className="auth-close"
-          type="button"
-          aria-label="Close"
-          onClick={() => setAuthMode(null)}
-        >
+        <button className="auth-close" type="button" aria-label="Close" onClick={() => setAuthMode(null)}>
           ×
         </button>
         <h2>{authMode === "create" ? "Create Account" : "Sign In"}</h2>
@@ -174,10 +159,10 @@ const Navbar: React.FC = () => {
           />
           {authMode === "create" && (
             <div className="password-requirements">
-              <p className={passwordChecks.length ? "ok" : ""}>At least 8 characters</p>
-              <p className={passwordChecks.uppercase ? "ok" : ""}>One uppercase letter</p>
-              <p className={passwordChecks.number ? "ok" : ""}>One number</p>
-              <p className={passwordChecks.special ? "ok" : ""}>One special character</p>
+              <p className={passwordChecks.length ? "ok" : ""}>• At least 8 characters</p>
+              <p className={passwordChecks.uppercase ? "ok" : ""}>• One uppercase letter</p>
+              <p className={passwordChecks.number ? "ok" : ""}>• One number</p>
+              <p className={passwordChecks.special ? "ok" : ""}>• One special character</p>
             </div>
           )}
         </label>
@@ -206,83 +191,57 @@ const Navbar: React.FC = () => {
 
   return (
     <>
-    <nav className="navbar">
-      <div className="logo">UCInsure</div>
+      <nav className="navbar">
+        <div className="logo">UCInsure</div>
 
-      {/* Desktop menu */}
-      <ul className="desktop-menu">
-        {MENU.map(item => (
-          <li key={item.title}>
-            <a href={item.link}>{item.title}</a>
-          </li>
-        ))}
-      </ul>
-
-      <div className="desktop-buttons">
-        {user ? (
-          <>
-            <span className="user-pill">{user.name}</span>
-            <button className="sign-in" type="button" onClick={handleSignOut}>
-              Sign Out
-            </button>
-          </>
-        ) : (
-          <>
-            <button className="sign-in" type="button" onClick={() => openAuth("signin")}>
-              Sign In
-            </button>
-            <button className="create-account" type="button" onClick={() => openAuth("create")}>
-              Create Account
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Hamburger button — only visible on mobile */}
-      <FontAwesomeIcon
-        className="mobile-menu-button"
-        icon={faBars}
-        onClick={() => setIsMobileMenuOpen(true)}
-      />
-
-      {/* Fix #1: X button and menu are now together inside the overlay */}
-      <div className={`mobile-menu-wrapper ${isMobileMenuOpen ? "open" : ""}`}>
-        <FontAwesomeIcon
-          className="mobile-close-button"
-          icon={faXmark}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-        <ul className="mobile-menu">
+        <ul className="desktop-menu">
           {MENU.map(item => (
             <li key={item.title}>
-              <a href={item.link} onClick={() => setIsMobileMenuOpen(false)}>
-                {item.title}
-              </a>
+              <a href={item.link}>{item.title}</a>
             </li>
           ))}
-          {/* Fix #3: no sign-in/create-account class here, inherits mobile-menu a styles */}
+        </ul>
+
+        <div className="desktop-buttons">
           {user ? (
             <>
-              <li className="mobile-user-label">{user.name}</li>
-              <li>
-                <button type="button" onClick={handleSignOut}>Sign Out</button>
-              </li>
+              <span className="user-pill">{user.name}</span>
+              <button className="sign-in" type="button" onClick={handleSignOut}>Sign Out</button>
             </>
           ) : (
             <>
-              <li>
-                <button type="button" onClick={() => openAuth("signin")}>Sign In</button>
-              </li>
-              <li>
-                <button type="button" onClick={() => openAuth("create")}>Create Account</button>
-              </li>
+              <button className="sign-in" type="button" onClick={() => openAuth("signin")}>Sign In</button>
+              <button className="create-account" type="button" onClick={() => openAuth("create")}>Create Account</button>
             </>
           )}
-        </ul>
-      </div>
+        </div>
 
-    </nav>
-    {authModal}
+        <FontAwesomeIcon className="mobile-menu-button" icon={faBars} onClick={() => setIsMobileMenuOpen(true)} />
+
+        <div className={`mobile-menu-wrapper ${isMobileMenuOpen ? "open" : ""}`}>
+          <FontAwesomeIcon className="mobile-close-button" icon={faXmark} onClick={() => setIsMobileMenuOpen(false)} />
+          <ul className="mobile-menu">
+            {MENU.map(item => (
+              <li key={item.title}>
+                <a href={item.link} onClick={() => setIsMobileMenuOpen(false)}>{item.title}</a>
+              </li>
+            ))}
+            {user ? (
+              <>
+                <li className="mobile-user-label">{user.name}</li>
+                <li><button type="button" onClick={handleSignOut}>Sign Out</button></li>
+              </>
+            ) : (
+              <>
+                <li><button type="button" onClick={() => openAuth("signin")}>Sign In</button></li>
+                <li><button type="button" onClick={() => openAuth("create")}>Create Account</button></li>
+              </>
+            )}
+          </ul>
+        </div>
+      </nav>
+
+      {authModal}
     </>
   );
 };

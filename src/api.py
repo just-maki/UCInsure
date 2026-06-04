@@ -1416,33 +1416,39 @@ def _average_cost_by_risk(labels: list[str], costs: pd.Series) -> dict:
         result[level] = 0.0 if pd.isna(value) else float(value)
     return result
 
-
 def _wildfire_damage_series(df: pd.DataFrame) -> Optional[pd.Series]:
     """
     Structure-level wildfire damage value using actuarial damage factors.
     Multiplies assessed_value by the fraction of damage actually sustained
-    per damage_level.
+    per damage_level, so Low < Medium < High ordering is preserved.
     """
     if "assessed_value" not in df.columns:
         return None
 
+    # Actuarial factors: midpoint of each damage band
+    _DAMAGE_FACTORS = {
+        "DESTROYED (>50%)" : 1.000,
+        "MAJOR (25-50%)"   : 0.375,
+        "MINOR (10-25%)"   : 0.175,
+        "AFFECTED (>0-10%)": 0.050,
+        "INACCESSIBLE"     : 0.150,
+        "NO DAMAGE"        : 0.000,
+    }
+
     values = pd.to_numeric(df["assessed_value"], errors="coerce").fillna(0).clip(lower=0)
+
     if "damage_level" in df.columns:
-        damage_factors = {
-            "DESTROYED (>50%)": 1.000,
-            "MAJOR (25-50%)": 0.375,
-            "MINOR (10-25%)": 0.175,
-            "AFFECTED (>0-10%)": 0.050,
-            "INACCESSIBLE": 0.150,
-            "NO DAMAGE": 0.000,
-        }
-        factors = df["damage_level"].astype(str).str.upper().map(damage_factors).fillna(0)
+        factors = df["damage_level"].map(_DAMAGE_FACTORS).fillna(0)
         values = values * factors
+    else:
+        # fallback: exclude NO DAMAGE rows, keep full assessed_value
+        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False) \
+            if "damage_level" in df.columns else pd.Series(True, index=df.index)
+        values = values.where(damaged_mask, 0)
 
     if float(values.sum()) <= 0:
         return None
     return values
-
 
 def _wildfire_fire_level_loss_total(df: pd.DataFrame) -> float:
     """
@@ -1456,6 +1462,54 @@ def _wildfire_fire_level_loss_total(df: pd.DataFrame) -> float:
     loss_df = df.drop_duplicates(dedupe_col) if dedupe_col else df
     losses = pd.to_numeric(loss_df["financial_loss_million"], errors="coerce").fillna(0).clip(lower=0)
     return float(losses.sum() * 1_000_000)
+
+
+def _future_projection(
+    model_key: str,
+    avg_risk: float,
+    total_damage: float,
+    dist: dict,
+    claim_count: int,
+    years: int = 5,
+) -> dict:
+    """
+    Conservative scenario projection from the uploaded portfolio baseline.
+    This is not a guaranteed forecast; it applies a simple hazard trend factor.
+    """
+    annual_trend = {
+        "flood": 0.025,
+        "hurricane": 0.030,
+        "wildfire": 0.040,
+    }.get(model_key, 0.025)
+
+    baseline_risk = max(float(avg_risk), 0.01)
+    baseline_damage = max(float(total_damage), 0.0)
+    baseline_high = float(dist.get("high", 0))
+    start_year = int(pd.Timestamp.today().year)
+
+    rows = []
+    for step in range(1, years + 1):
+        trend_multiplier = (1 + annual_trend) ** step
+        projected_risk = min(1.0, baseline_risk * trend_multiplier)
+        risk_multiplier = projected_risk / baseline_risk
+        projected_high = min(claim_count, round(baseline_high * risk_multiplier))
+        projected_damage = baseline_damage * risk_multiplier
+        rows.append({
+            "year": start_year + step,
+            "avgRisk": float(projected_risk),
+            "score10": float(projected_risk * 10),
+            "highRiskProperties": int(projected_high),
+            "estimatedDamage": float(projected_damage),
+        })
+
+    return {
+        "method": (
+            "Scenario projection based on the uploaded records, current model score, "
+            "and a conservative annual hazard trend. This is not a guaranteed forecast."
+        ),
+        "annualTrend": annual_trend,
+        "years": rows,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2029,62 +2083,58 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
     fig, ax = plt.subplots(figsize=(9, 4))
     _dark_ax(ax, fig)
 
-    chart_df = pd.DataFrame({
-        "year": _valid_hurricane_years(df_clean),
-        "score10": (report_score_series * 10).to_numpy(),
-    }).dropna(subset=["year", "score10"])
+    risk_counts = [dist["low"], dist["medium"], dist["high"]]
+    axes[0].bar(
+        ["Low", "Medium", "High"],
+        risk_counts,
+        color=["green", "gold", "crimson"],
+    )
+    axes[0].set_ylabel("Properties", color="white")
+    axes[0].set_title("Predicted Risk Categories", color="white", fontsize=11, fontweight="bold")
 
-    if not chart_df.empty:
-        yearly = (
-            chart_df.assign(year=chart_df["year"].astype(int))
-            .groupby("year")["score10"]
-            .mean()
-            .sort_index()
-        )
-        ax.plot(
-            yearly.index,
-            yearly.values,
-            color="#38bdf8",
-            marker="o",
-            linewidth=2.4,
-            markersize=6,
-        )
-        ax.fill_between(
-            yearly.index,
-            yearly.values,
-            0,
-            color="#38bdf8",
-            alpha=0.14,
-        )
-        ax.set_ylim(0, 10)
-        ax.set_xlabel("Year", color="white")
-        ax.set_ylabel("Average Risk Score (1-10)", color="white")
-        ax.set_xticks(yearly.index)
-        ax.set_title("Hurricane Average Risk Score by Year", color="white", fontsize=13, fontweight="bold")
-    else:
-        ax.text(
-            0.5,
-            0.55,
-            "No valid year column found",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            color="white",
-            fontsize=13,
-            fontweight="bold",
-        )
-        ax.text(
-            0.5,
-            0.42,
-            "Upload hurricane data with integer years to view risk trend over time.",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            color="#cbd5e1",
-            fontsize=9,
-        )
-        ax.set_xticks([])
-        ax.set_yticks([])
+    plot_df = df_clean.copy()
+    plot_df["_score"] = report_score_series.to_numpy()
+    plot_df["_label"] = labels
+    if len(plot_df) > 600:
+        plot_df = plot_df.sample(600, random_state=42)
+
+    distance = pd.to_numeric(plot_df["prop_dist_to_track_nm"], errors="coerce").fillna(0)
+    wind = pd.to_numeric(plot_df["prop_max_wind_kt"], errors="coerce").fillna(0)
+    exposure = _first_positive_series(
+        plot_df,
+        [
+            "totalBuildingInsuranceCoverage",
+            "buildingReplacementCost",
+            "buildingPropertyValue",
+            "BUILDVALUE",
+            "HRCN_EXPB",
+        ],
+    )
+    sizes = 30 + 120 * (exposure / max(float(exposure.max()), 1.0)).clip(0, 1)
+    point_colors = plot_df["_label"].map(
+        {"low": "green", "medium": "gold", "high": "crimson"}
+    ).fillna("gray")
+
+    axes[1].scatter(
+        distance,
+        wind,
+        s=sizes,
+        c=point_colors,
+        alpha=0.72,
+        edgecolors="white",
+        linewidths=0.25,
+    )
+    axes[1].invert_xaxis()
+    axes[1].set_xlabel("Distance to Storm Track (nm)", color="white")
+    axes[1].set_ylabel("Property Wind Speed (kt)", color="white")
+    axes[1].set_title("Storm Proximity vs Wind", color="white", fontsize=11, fontweight="bold")
+
+    fig.suptitle(
+        "Hurricane Risk Drivers",
+        color="white",
+        fontsize=13,
+        fontweight="bold",
+    )
 
     chart_url = _chart_to_base64(fig)
 
@@ -2352,7 +2402,7 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
 
     if "fire_year" in df.columns:
         df["fire_year"] = pd.to_numeric(df["fire_year"], errors="coerce")
-        df["predicted_risk"] = [label.capitalize() for label in labels]
+        df["predicted_risk"] = [l.capitalize() for l in labels]
         year_data = (
             df.groupby(["fire_year", "predicted_risk"])
             .size()

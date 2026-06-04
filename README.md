@@ -76,7 +76,7 @@ Frontend:
 ## Project Structure
 
 ```text
-uci_31_5/
+UCInsure/
 ├── src/
 │   ├── api.py
 │   ├── config.py
@@ -106,7 +106,7 @@ uci_31_5/
 From the project root:
 
 ```bash
-cd uci_31_5
+cd UCInsure
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -115,7 +115,7 @@ pip install -r requirements.txt
 On Windows:
 
 ```bash
-cd uci_31_5
+cd UCInsure
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt

@@ -260,9 +260,11 @@ const Upload: React.FC = () => {
       {isAnalyzing && (
         <div className="analysis-overlay">
           <div className="analysis-modal">
-            <p className="analysis-kicker">Machine learning pipeline</p>
+            <p className="analysis-kicker">Analysis in progress</p>
             <h3>Running {info?.label} Model...</h3>
-            <p className="analysis-current-step">{ANALYSIS_STEPS[analysisStep]}</p>
+            <p className="analysis-current-step">
+              Please wait while UCInsure scores your uploaded dataset.
+            </p>
             <div className="analysis-bar">
               <div
                 className="analysis-fill"
@@ -270,19 +272,6 @@ const Upload: React.FC = () => {
               />
             </div>
             <p className="analysis-percent">{analysisProgress}% complete</p>
-            <div className="analysis-steps">
-              {ANALYSIS_STEPS.map((step, index) => (
-                <div
-                  key={step}
-                  className={`analysis-step ${
-                    index < analysisStep ? "is-done" : index === analysisStep ? "is-active" : ""
-                  }`}
-                >
-                  <span>{index < analysisStep ? "✓" : index + 1}</span>
-                  <p>{step}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}
