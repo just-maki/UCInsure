@@ -1841,6 +1841,33 @@ def _prepare_hurricane_schema(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _valid_hurricane_years(df: pd.DataFrame) -> pd.Series:
+    """Return valid calendar years for hurricane charts, excluding decimal years."""
+    current_year = int(pd.Timestamp.today().year)
+
+    for col in ("yearOfLoss", "lossYear", "YEAR", "Year", "year"):
+        if col not in df.columns:
+            continue
+
+        values = pd.to_numeric(df[col], errors="coerce")
+        whole_years = values.notna() & np.isclose(values, np.round(values), atol=0.001)
+        valid_range = values.between(1900, current_year + 5)
+        years = values.where(whole_years & valid_range).round().astype("Int64")
+        if years.notna().any():
+            return years
+
+    for col in ("dateOfLoss", "lossDate", "eventDate", "incident_date"):
+        if col not in df.columns:
+            continue
+
+        dates = pd.to_datetime(df[col], errors="coerce")
+        years = dates.dt.year.astype("Int64")
+        if years.notna().any():
+            return years
+
+    return pd.Series(pd.NA, index=df.index, dtype="Int64")
+
+
 def _run_hurricane(df: pd.DataFrame) -> dict:
     df = _prepare_hurricane_schema(df)
     missing = _HURRICANE_REQUIRED - set(df.columns)
@@ -2053,9 +2080,8 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
         _claim_cost_series(df_clean, estimated_hurricane_damage),
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
-    for chart_ax in axes:
-        _dark_ax(chart_ax, fig)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    _dark_ax(ax, fig)
 
     risk_counts = [dist["low"], dist["medium"], dist["high"]]
     axes[0].bar(

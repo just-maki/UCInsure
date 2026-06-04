@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import RiskMap, { type MapPoint } from "../components/RiskMap";
+import jsPDF from "jspdf";
 import "./Analysis.css";
 import jsPDF from "jspdf";
 
@@ -115,9 +116,9 @@ const GRAPH_COPY: Record<string, { title: string; description: string }> = {
       "This chart summarizes flood claim records by risk level, using the available claim year information when present.",
   },
   hurricane: {
-    title: "Hurricane Risk Drivers",
+    title: "Hurricane Risk Trend",
     description:
-      "This chart shows predicted hurricane risk categories and how risk relates to storm-track distance, property wind speed, and exposure.",
+      "This chart shows the average predicted hurricane risk score by year when valid year information is available.",
   },
   wildfire: {
     title: "Wildfire Risk Chart",

@@ -64,6 +64,36 @@ const modelStateIds: Record<ModelAccent, Set<string>> = {
   wildfire:  new Set(["4","6","8","16","30","32","35","41","49","53","56"]),
   hurricane: new Set(["1","10","11","12","13","22","24","28","34","36","37","42","45","48","51"]),
 };
+const welcomeKpis = [
+  "Could your next home face flood, wildfire, or hurricane risk?",
+  "Could one severe event change insurance cost in your neighborhood?",
+  "Which places may look affordable today but carry higher climate exposure?",
+  "Can a family compare risk before choosing where to live?",
+  "UCInsure turns climate and claim data into a simple risk story.",
+];
+const welcomeVisualSlides = [
+  {
+    label: "Wildfire",
+    headline: "A wildfire can turn property risk into a family decision overnight.",
+    caption: "UCInsure helps translate fire exposure into plain risk levels.",
+    image:
+      "https://images.unsplash.com/photo-1615092296061-e2ccfeb2f3d6?auto=format&fit=crop&q=80&w=1800",
+  },
+  {
+    label: "Hurricane",
+    headline: "A hurricane path can change the cost of protecting a home.",
+    caption: "The hurricane model looks at wind, exposure, and location signals.",
+    image:
+      "https://images.unsplash.com/photo-1527482937786-6608f6e14c15?auto=format&fit=crop&q=80&w=1800",
+  },
+  {
+    label: "Flood",
+    headline: "A flooded street is not just weather. It can become a claim.",
+    caption: "The flood model summarizes risk from uploaded insurance records.",
+    image:
+      "https://images.unsplash.com/photo-1475115688296-63fa31716337?auto=format&fit=crop&q=80&w=1800",
+  },
+];
 
 const atlasData = usAtlas as { objects: { states: unknown } };
 const allStates = feature(atlasData as never, atlasData.objects.states as never) as unknown as { features: AtlasFeature[] };
@@ -78,11 +108,21 @@ const Landing: React.FC = () => {
   const [hoveredState, setHoveredState] = useState<HoveredState | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<RegionName | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelAccent | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [activeWelcomeKpi, setActiveWelcomeKpi] = useState(0);
 
   useEffect(() => {
     const incoming = (location.state as { selectedModel?: ModelAccent } | null)?.selectedModel;
     if (incoming && ["flood", "wildfire", "hurricane"].includes(incoming)) setSelectedModel(incoming);
   }, [location.state]);
+
+  useEffect(() => {
+    if (!showWelcome) return;
+    const interval = window.setInterval(() => {
+      setActiveWelcomeKpi((current) => (current + 1) % welcomeKpis.length);
+    }, 2200);
+    return () => window.clearInterval(interval);
+  }, [showWelcome]);
 
   const regions: RegionName[] = ["East Coast", "West Coast", "Midwest", "Gulf Coast", "Southeast Coast"];
   const models = [
@@ -174,6 +214,76 @@ const Landing: React.FC = () => {
 
   return (
     <main className="landing-page">
+      {showWelcome && (
+        <div className="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+          <div className="presentation-video" aria-hidden="true">
+            {welcomeVisualSlides.map((slide, index) => (
+              <div
+                className="presentation-slide"
+                key={slide.label}
+                style={{
+                  backgroundImage: `linear-gradient(90deg, rgba(2, 6, 23, 0.82), rgba(2, 6, 23, 0.34)), url(${slide.image})`,
+                  animationDelay: `${index * 4}s`,
+                }}
+              >
+                <span className="presentation-label">{slide.label}</span>
+              </div>
+            ))}
+          </div>
+          <section className="welcome-card welcome-stage">
+            <button
+              type="button"
+              className="welcome-close"
+              onClick={() => setShowWelcome(false)}
+              aria-label="Close welcome message"
+            >
+              ×
+            </button>
+            <div className="welcome-main-copy">
+              <p className="welcome-kicker">For every home, there is a climate story</p>
+              <h2 id="welcome-title">Would you know if your street was becoming harder to insure?</h2>
+              <p className="welcome-copy">
+                UCInsure helps families, buyers, and insurers see climate-related risk before a
+                flood, wildfire, or hurricane turns into a costly surprise.
+              </p>
+              <div className="welcome-ticker" aria-live="polite">
+                <span>Ask the simple question first</span>
+                <strong>{welcomeKpis[activeWelcomeKpi]}</strong>
+              </div>
+              <div className="welcome-kpi-grid">
+                <div>
+                  <span>Risk score</span>
+                  <strong>1-10</strong>
+                </div>
+                <div>
+                  <span>Hazards</span>
+                  <strong>3 models</strong>
+                </div>
+                <div>
+                  <span>Output</span>
+                  <strong>Map + cost</strong>
+                </div>
+              </div>
+              <button type="button" className="welcome-primary" onClick={() => setShowWelcome(false)}>
+                Enter UCInsure
+              </button>
+            </div>
+            <div className="welcome-disaster-strip" aria-label="Climate risk examples">
+              {welcomeVisualSlides.map((slide) => (
+                <article className="welcome-disaster-card" key={slide.label}>
+                  <img src={slide.image} alt={`${slide.label} risk example`} />
+                  <div>
+                    <span>{slide.label}</span>
+                    <strong>{slide.headline}</strong>
+                    <p>{slide.caption}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       <section className="landing-hero">
         <article className="dark-card hero-copy-block">
           <h1>Predict. Prepare. Protect.</h1>

@@ -660,6 +660,109 @@
   line-height: 1.65;
 }
 
+.csv-section {
+  max-width: 1100px;
+  margin: 3rem auto 0;
+}
+
+.csv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.csv-card {
+  overflow: visible;
+  padding: 1.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+}
+
+.csv-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f8fafc;
+}
+
+.csv-sub {
+  margin: 0.3rem 0 1rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.csv-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.csv-card td {
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.csv-card.flood {
+  border-top: 3px solid #67e8f9;
+}
+
+.csv-card.hurricane {
+  border-top: 3px solid #fbbf24;
+}
+
+.csv-card.wildfire {
+  border-top: 3px solid #fb7185;
+}
+
+.csv-cell {
+  position: relative;
+}
+
+.csv-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.csv-hover {
+  cursor: help;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.csv-tooltip {
+  position: absolute;
+  left: 0;
+  top: 120%;
+  z-index: 20;
+  width: min(260px, 80vw);
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.96);
+  color: #e2e8f0;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.csv-tooltip-wrapper:hover .csv-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.csv-tooltip-wrapper:hover .csv-hover {
+  color: #5eead4;
+  border-bottom-color: rgba(94, 234, 212, 0.6);
+}
+
 @media (max-width: 1080px) {
   .landing-hero,
   .landing-grid { grid-template-columns: 1fr; }
@@ -720,6 +823,12 @@
   .risk-legend-card { position: static; margin-top: 1rem; }
   .faq-item summary { align-items: flex-start; font-size: 0.95rem; }
   .faq-item p { padding-left: 1.1rem; }
+}
+
+@media (max-width: 900px) {
+  .csv-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 

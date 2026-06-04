@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer"
+import AssistantGuide from "./components/AssistantGuide";
 import Landing from "./pages/Landing";
 import Upload from "./pages/Upload";
 import Analysis from "./pages/Analysis";
@@ -18,6 +19,7 @@ function App() {
         <Route path="/analysis" element={<Analysis />} />          <Route path="/about" element={<About />} />      </Routes>
 
       <Footer />
+      <AssistantGuide />
     </Router>
   );
 }
