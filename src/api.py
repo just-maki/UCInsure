@@ -1416,25 +1416,39 @@ def _average_cost_by_risk(labels: list[str], costs: pd.Series) -> dict:
         result[level] = 0.0 if pd.isna(value) else float(value)
     return result
 
-
 def _wildfire_damage_series(df: pd.DataFrame) -> Optional[pd.Series]:
     """
-    Structure-level wildfire damage value.
-    Prefer assessed_value because it is per inspection/structure row. Exclude explicit
-    no-damage rows so totals represent damaged/inaccessible structures only.
+    Structure-level wildfire damage value using actuarial damage factors.
+    Multiplies assessed_value by the fraction of damage actually sustained
+    per damage_level, so Low < Medium < High ordering is preserved.
     """
     if "assessed_value" not in df.columns:
         return None
 
+    # Actuarial factors: midpoint of each damage band
+    _DAMAGE_FACTORS = {
+        "DESTROYED (>50%)" : 1.000,
+        "MAJOR (25-50%)"   : 0.375,
+        "MINOR (10-25%)"   : 0.175,
+        "AFFECTED (>0-10%)": 0.050,
+        "INACCESSIBLE"     : 0.150,
+        "NO DAMAGE"        : 0.000,
+    }
+
     values = pd.to_numeric(df["assessed_value"], errors="coerce").fillna(0).clip(lower=0)
+
     if "damage_level" in df.columns:
-        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False)
+        factors = df["damage_level"].map(_DAMAGE_FACTORS).fillna(0)
+        values = values * factors
+    else:
+        # fallback: exclude NO DAMAGE rows, keep full assessed_value
+        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False) \
+            if "damage_level" in df.columns else pd.Series(True, index=df.index)
         values = values.where(damaged_mask, 0)
 
     if float(values.sum()) <= 0:
         return None
     return values
-
 
 def _wildfire_fire_level_loss_total(df: pd.DataFrame) -> float:
     """
@@ -2362,8 +2376,9 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
 
     if "fire_year" in df.columns:
         df["fire_year"] = pd.to_numeric(df["fire_year"], errors="coerce")
+        df["predicted_risk"] = [l.capitalize() for l in labels]
         year_data = (
-            df.groupby(["fire_year", "risk_level"])
+            df.groupby(["fire_year", "predicted_risk"])
             .size()
             .unstack(fill_value=0)
         )
