@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import RiskMap, { type MapPoint } from "../components/RiskMap";
+import jsPDF from "jspdf";
 import "./Analysis.css";
 
 interface PredictResult {
@@ -8,6 +9,7 @@ interface PredictResult {
   claimCount: number;
   totalDamage: number;
   riskDistribution: { low?: number; medium?: number; high?: number };
+  averageCostByRisk?: { low?: number; medium?: number; high?: number };
   chartUrl: string | null;
   modelUsed: string;
   mapPoints?: MapPoint[];
@@ -21,6 +23,68 @@ const MODEL_META: Record<string, { label: string; cls: string }> = {
   wildfire:  { label: "Wildfire",  cls: "badge-wildfire"  },
 };
 
+const downloadPDF = async (result: PredictResult) => {
+  const pdf = new jsPDF("p", "mm", "a4");
+  const margin = 14;
+  let y = 20;
+
+  const formatUSD = (value?: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value ?? 0);
+
+  const addTitle = (text: string) => {
+    pdf.setFontSize(16);
+    pdf.text(text, margin, y);
+    y += 10;
+  };
+
+  const addText = (text: string) => {
+    pdf.setFontSize(11);
+    pdf.text(text, margin, y);
+    y += 7;
+  };
+
+  addTitle("UCInsure Risk Analysis Report");
+  addText(`Model Used: ${result.modelUsed}`);
+  y += 6;
+
+  addTitle("Average Predicted Risk Score");
+  addText(`${(result.avgRisk * 10).toFixed(2)} / 10`);
+  y += 6;
+
+  addTitle("Analysis Summary");
+  addText(`Records Scored: ${result.claimCount.toLocaleString()}`);
+  addText(`Total Damage Paid/Estimated: ${formatUSD(result.totalDamage)}`);
+  y += 6;
+
+  addTitle("Properties by Risk Level");
+  addText(
+    `Low: ${result.riskDistribution.low ?? 0} | ` +
+    `Medium: ${result.riskDistribution.medium ?? 0} | ` +
+    `High: ${result.riskDistribution.high ?? 0}`
+  );
+  y += 6;
+
+  if (result.averageCostByRisk) {
+    addTitle("Avg. Cost per Property");
+    addText(
+      `Low: ${formatUSD(result.averageCostByRisk.low)} | ` +
+      `Medium: ${formatUSD(result.averageCostByRisk.medium)} | ` +
+      `High: ${formatUSD(result.averageCostByRisk.high)}`
+    );
+    y += 6;
+  }
+
+  if (result.chartUrl) {
+    pdf.addImage(result.chartUrl, "PNG", margin, y, 180, 80);
+  }
+
+  pdf.save("ucinsure_analysis.pdf");
+};
+
 const GRAPH_COPY: Record<string, { title: string; description: string }> = {
   flood: {
     title: "Flood Risk Chart",
@@ -28,9 +92,9 @@ const GRAPH_COPY: Record<string, { title: string; description: string }> = {
       "This chart summarizes flood claim records by risk level, using the available claim year information when present.",
   },
   hurricane: {
-    title: "Hurricane Risk Drivers",
+    title: "Hurricane Risk Trend",
     description:
-      "This chart shows predicted hurricane risk categories and how risk relates to storm-track distance, property wind speed, and exposure.",
+      "This chart shows the average predicted hurricane risk score by year when valid year information is available.",
   },
   wildfire: {
     title: "Wildfire Risk Chart",
@@ -147,6 +211,8 @@ const Analysis: React.FC = () => {
   const modelMeta = MODEL_META[modelType];
   const graphCopy = GRAPH_COPY[modelType];
   const mapPoints: MapPoint[] = apiResult.mapPoints ?? [];
+  const formatCurrency = (value?: number) =>
+    `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="analysis-container">
@@ -155,9 +221,18 @@ const Analysis: React.FC = () => {
           <h2>Risk Analysis</h2>
           <span className={`model-badge ${modelMeta.cls}`}>{modelMeta.label}</span>
         </div>
-        <button className="clear-btn" onClick={handleClear} title="Remove this analysis">
-          ✕ Clear
-        </button>
+        <div className="analysis-actions">
+          <button
+            className="download-btn"
+            onClick={() => downloadPDF(apiResult)}
+            type="button"
+          >
+            Download PDF
+          </button>
+          <button className="clear-btn" onClick={handleClear} title="Remove this analysis" type="button">
+            ✕ Clear
+          </button>
+        </div>
       </div>
 
       {/* MAP */}
@@ -175,8 +250,12 @@ const Analysis: React.FC = () => {
       {/* RISK */}
       <div className={`fade-section ${showRisk ? "show" : ""}`}>
         <div className="risk-section">
-          <h3>Predicted Risk Score</h3>
+          <h3>Average Predicted Risk Score</h3>
           <p className="risk-value">{riskDisplay}/10</p>
+          <p className="risk-explainer">
+            This is the average score for all records in your uploaded CSV. Individual
+            properties may still fall into Low, Medium, or High risk.
+          </p>
 
           {/* BAR WRAPPER */}
           <div className="risk-bar-wrapper">
@@ -226,23 +305,48 @@ const Analysis: React.FC = () => {
       <div className={`fade-section ${showGraph ? "show" : ""}`}>
         <div className="graph-section">
           <h3>Analysis Summary</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <tbody>
-              <tr><td><strong>Records scored</strong></td><td>{apiResult.claimCount.toLocaleString()}</td></tr>
-              <tr><td><strong>Total damage paid</strong></td><td>${apiResult.totalDamage.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td></tr>
-              <tr><td><strong>Model</strong></td><td>{apiResult.modelUsed}</td></tr>
-              {apiResult.riskDistribution && (
-                <tr>
-                  <td><strong>Risk distribution</strong></td>
-                  <td>
-                    Low: {apiResult.riskDistribution.low ?? 0} &nbsp;|&nbsp;
-                    Medium: {apiResult.riskDistribution.medium ?? 0} &nbsp;|&nbsp;
-                    High: {apiResult.riskDistribution.high ?? 0}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="analysis-summary-grid">
+            <div className="summary-card">
+              <div className="summary-label">Records scored</div>
+              <div className="summary-value">{apiResult.claimCount.toLocaleString()}</div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Total damage</div>
+              <div className="summary-value">{formatCurrency(apiResult.totalDamage)}</div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Model used</div>
+              <div className="summary-model">{apiResult.modelUsed}</div>
+            </div>
+
+            {apiResult.riskDistribution && (
+              <div className="summary-card wide">
+                <div className="summary-label">Properties by risk level</div>
+                <div className="summary-distribution">
+                  <span><b>Low:</b> {apiResult.riskDistribution.low ?? 0}</span>
+                  <span className="dot">|</span>
+                  <span><b>Medium:</b> {apiResult.riskDistribution.medium ?? 0}</span>
+                  <span className="dot">|</span>
+                  <span><b>High:</b> {apiResult.riskDistribution.high ?? 0}</span>
+                </div>
+              </div>
+            )}
+
+            {apiResult.averageCostByRisk && (
+              <div className="summary-card wide">
+                <div className="summary-label">Avg. claim/damage cost per property</div>
+                <div className="summary-distribution">
+                  <span><b>Low:</b> {formatCurrency(apiResult.averageCostByRisk.low)}</span>
+                  <span className="dot">|</span>
+                  <span><b>Medium:</b> {formatCurrency(apiResult.averageCostByRisk.medium)}</span>
+                  <span className="dot">|</span>
+                  <span><b>High:</b> {formatCurrency(apiResult.averageCostByRisk.high)}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

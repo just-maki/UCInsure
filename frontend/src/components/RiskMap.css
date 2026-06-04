@@ -74,6 +74,31 @@
 }
 
 /* ── Leaflet popup dark theme ──────────────────────────────── */
+.risk-tooltip {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  background: rgba(10, 15, 24, 0.94);
+  color: #f8fafc;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+
+.risk-tooltip.leaflet-tooltip-top::before {
+  border-top-color: rgba(10, 15, 24, 0.94);
+}
+
+.risk-tooltip strong {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.risk-tooltip span {
+  display: block;
+  margin-top: 0.15rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+}
+
 .risk-popup .leaflet-popup-content-wrapper {
   background: #1a1a1a;
   color: white;

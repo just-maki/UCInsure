@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import "./Navbar.css";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark } from '@fortawesome/free-solid-svg-icons';
+
+const ACCOUNTS_KEY = "ucinsure_accounts";
+const CURRENT_USER_KEY = "ucinsure_user";
+
+type Account = {
+  name: string;
+  email: string;
+  passwordHash: string;
+};
 
 const MENU = [
   { title: "Home", link: "/" },
@@ -10,25 +20,46 @@ const MENU = [
   { title: "About", link: "/about" }
 ];
 
+const validatePassword = (password: string) => {
+  if (password.length < 8) return "Password must be at least 8 characters long.";
+  if (!/[A-Z]/.test(password)) return "Password must contain at least 1 uppercase letter.";
+  if (!/[0-9]/.test(password)) return "Password must contain at least 1 number.";
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return "Password must contain at least 1 special character.";
+  return null;
+};
+
+const hashPassword = async (password: string) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+};
+
 const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "create" | null>(null);
   const [authError, setAuthError] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
   const [user, setUser] = useState<{ name: string; email: string } | null>(() => {
     try {
-      const saved = localStorage.getItem("ucinsure_user");
+      const saved = localStorage.getItem(CURRENT_USER_KEY);
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
   });
 
-  // Fix #2: close menu when viewport expands past mobile breakpoint
+  const passwordChecks = {
+    length: passwordValue.length >= 8,
+    uppercase: /[A-Z]/.test(passwordValue),
+    number: /[0-9]/.test(passwordValue),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(passwordValue),
+  };
+
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setIsMobileMenuOpen(false);
-      }
+      if (window.innerWidth > 768) setIsMobileMenuOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -37,10 +68,11 @@ const Navbar: React.FC = () => {
   const openAuth = (mode: "signin" | "create") => {
     setAuthMode(mode);
     setAuthError("");
+    setPasswordValue("");
     setIsMobileMenuOpen(false);
   };
 
-  const handleAuthSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
@@ -52,37 +84,128 @@ const Navbar: React.FC = () => {
       return;
     }
 
+    const savedAccounts = localStorage.getItem(ACCOUNTS_KEY);
+    const accounts: Account[] = savedAccounts ? JSON.parse(savedAccounts) : [];
+
     if (authMode === "create") {
-      const newUser = { name, email, password };
-      localStorage.setItem("ucinsure_account", JSON.stringify(newUser));
-      localStorage.setItem("ucinsure_user", JSON.stringify({ name, email }));
+      const exists = accounts.find(a => a.email === email);
+      if (exists) {
+        setAuthError("An account with this email already exists.");
+        return;
+      }
+
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        setAuthError(passwordError);
+        return;
+      }
+
+      const passwordHash = await hashPassword(password);
+      const updatedAccounts = [...accounts, { name, email, passwordHash }];
+
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name, email }));
       setUser({ name, email });
       setAuthMode(null);
       return;
     }
 
-    try {
-      const saved = localStorage.getItem("ucinsure_account");
-      const account = saved ? JSON.parse(saved) : null;
-      if (!account || account.email !== email || account.password !== password) {
-        setAuthError("No matching local account found.");
-        return;
-      }
-      localStorage.setItem("ucinsure_user", JSON.stringify({ name: account.name, email }));
-      setUser({ name: account.name, email });
-      setAuthMode(null);
-    } catch {
-      setAuthError("Could not read the saved account.");
+    const account = accounts.find(a => a.email === email);
+    if (!account) {
+      setAuthError("No account found with this email.");
+      return;
     }
+
+    const passwordHash = await hashPassword(password);
+    if (account.passwordHash !== passwordHash) {
+      setAuthError("Incorrect password.");
+      return;
+    }
+
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name: account.name, email: account.email }));
+    setUser({ name: account.name, email: account.email });
+    setAuthMode(null);
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem("ucinsure_user");
+    localStorage.removeItem(CURRENT_USER_KEY);
     setUser(null);
     setIsMobileMenuOpen(false);
   };
 
+  const authModal = authMode ? ReactDOM.createPortal(
+    <div className="auth-overlay" onClick={() => setAuthMode(null)}>
+      <form className="auth-modal" onSubmit={handleAuthSubmit} onClick={(e) => e.stopPropagation()}>
+        <button
+          className="auth-close"
+          type="button"
+          aria-label="Close"
+          onClick={() => setAuthMode(null)}
+        >
+          ×
+        </button>
+        <h2>{authMode === "create" ? "Create Account" : "Sign In"}</h2>
+        <p>
+          {authMode === "create"
+            ? "Create a local demo account for UCInsure."
+            : "Sign in with the local account created on this browser."}
+        </p>
+
+        {authMode === "create" && (
+          <label>
+            Name
+            <input name="name" type="text" autoComplete="name" />
+          </label>
+        )}
+
+        <label>
+          Email
+          <input name="email" type="email" autoComplete="email" />
+        </label>
+
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autoComplete={authMode === "create" ? "new-password" : "current-password"}
+            value={passwordValue}
+            onChange={(e) => setPasswordValue(e.target.value)}
+          />
+          {authMode === "create" && (
+            <div className="password-requirements">
+              <p className={passwordChecks.length ? "ok" : ""}>At least 8 characters</p>
+              <p className={passwordChecks.uppercase ? "ok" : ""}>One uppercase letter</p>
+              <p className={passwordChecks.number ? "ok" : ""}>One number</p>
+              <p className={passwordChecks.special ? "ok" : ""}>One special character</p>
+            </div>
+          )}
+        </label>
+
+        {authError && <div className="auth-error">{authError}</div>}
+
+        <button className="auth-submit" type="submit">
+          {authMode === "create" ? "Create Account" : "Sign In"}
+        </button>
+
+        <button
+          className="auth-switch"
+          type="button"
+          onClick={() => {
+            setAuthError("");
+            setPasswordValue("");
+            setAuthMode(authMode === "create" ? "signin" : "create");
+          }}
+        >
+          {authMode === "create" ? "Already have an account? Sign in" : "Need an account? Create one"}
+        </button>
+      </form>
+    </div>,
+    document.body
+  ) : null;
+
   return (
+    <>
     <nav className="navbar">
       <div className="logo">UCInsure</div>
 
@@ -158,67 +281,9 @@ const Navbar: React.FC = () => {
         </ul>
       </div>
 
-      {authMode && (
-        <div className="auth-overlay" onClick={() => setAuthMode(null)}>
-          <form className="auth-modal" onSubmit={handleAuthSubmit} onClick={(e) => e.stopPropagation()}>
-            <button
-              className="auth-close"
-              type="button"
-              aria-label="Close"
-              onClick={() => setAuthMode(null)}
-            >
-              ×
-            </button>
-            <h2>{authMode === "create" ? "Create Account" : "Sign In"}</h2>
-            <p>
-              {authMode === "create"
-                ? "Create a local demo account for UCInsure."
-                : "Sign in with the local account created on this browser."}
-            </p>
-
-            {authMode === "create" && (
-              <label>
-                Name
-                <input name="name" type="text" autoComplete="name" />
-              </label>
-            )}
-
-            <label>
-              Email
-              <input name="email" type="email" autoComplete="email" />
-            </label>
-
-            <label>
-              Password
-              <input
-                name="password"
-                type="password"
-                autoComplete={authMode === "create" ? "new-password" : "current-password"}
-              />
-            </label>
-
-            {authError && <div className="auth-error">{authError}</div>}
-
-            <button className="auth-submit" type="submit">
-              {authMode === "create" ? "Create Account" : "Sign In"}
-            </button>
-
-            <button
-              className="auth-switch"
-              type="button"
-              onClick={() => {
-                setAuthError("");
-                setAuthMode(authMode === "create" ? "signin" : "create");
-              }}
-            >
-              {authMode === "create"
-                ? "Already have an account? Sign in"
-                : "Need an account? Create one"}
-            </button>
-          </form>
-        </div>
-      )}
     </nav>
+    {authModal}
+    </>
   );
 };
 

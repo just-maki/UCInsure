@@ -39,6 +39,15 @@ const MODEL_INFO: Record<ModelType, ModelInfo> = {
   },
 };
 
+const ANALYSIS_STEPS = [
+  "Reading uploaded CSV",
+  "Validating model columns",
+  "Preparing risk features",
+  "Running ML prediction model",
+  "Calculating risk distribution",
+  "Generating chart and map output",
+];
+
 const Upload: React.FC = () => {
   const navigate = useNavigate();
 
@@ -53,6 +62,7 @@ const Upload: React.FC = () => {
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStep, setAnalysisStep] = useState(0);
 
   const isCSV = (f: File) => f.name.toLowerCase().endsWith(".csv");
 
@@ -88,11 +98,18 @@ const Upload: React.FC = () => {
 
     setIsAnalyzing(true);
     setAnalysisProgress(0);
+    setAnalysisStep(0);
 
     let fakeProgress = 0;
     const ticker = setInterval(() => {
       fakeProgress = Math.min(fakeProgress + 3, 88);
       setAnalysisProgress(fakeProgress);
+      setAnalysisStep(
+        Math.min(
+          ANALYSIS_STEPS.length - 1,
+          Math.floor((fakeProgress / 100) * ANALYSIS_STEPS.length)
+        )
+      );
     }, 180);
 
     try {
@@ -111,17 +128,20 @@ const Upload: React.FC = () => {
         alert(`Analysis failed: ${JSON.stringify(err.detail ?? err)}`);
         setIsAnalyzing(false);
         setAnalysisProgress(0);
+        setAnalysisStep(0);
         return;
       }
 
       const result = await response.json();
       setAnalysisProgress(100);
+      setAnalysisStep(ANALYSIS_STEPS.length - 1);
       setTimeout(() => navigate("/analysis", { state: { result } }), 400);
     } catch (err) {
       clearInterval(ticker);
       alert(`Network error: ${err}`);
       setIsAnalyzing(false);
       setAnalysisProgress(0);
+      setAnalysisStep(0);
     }
   };
 
@@ -240,14 +260,29 @@ const Upload: React.FC = () => {
       {isAnalyzing && (
         <div className="analysis-overlay">
           <div className="analysis-modal">
-            <h3>Running {info?.label} Model…</h3>
+            <p className="analysis-kicker">Machine learning pipeline</p>
+            <h3>Running {info?.label} Model...</h3>
+            <p className="analysis-current-step">{ANALYSIS_STEPS[analysisStep]}</p>
             <div className="analysis-bar">
               <div
                 className="analysis-fill"
                 style={{ width: `${analysisProgress}%` }}
               />
             </div>
-            <p>{analysisProgress}%</p>
+            <p className="analysis-percent">{analysisProgress}% complete</p>
+            <div className="analysis-steps">
+              {ANALYSIS_STEPS.map((step, index) => (
+                <div
+                  key={step}
+                  className={`analysis-step ${
+                    index < analysisStep ? "is-done" : index === analysisStep ? "is-active" : ""
+                  }`}
+                >
+                  <span>{index < analysisStep ? "✓" : index + 1}</span>
+                  <p>{step}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
