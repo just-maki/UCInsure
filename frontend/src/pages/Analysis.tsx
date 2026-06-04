@@ -9,6 +9,7 @@ interface PredictResult {
   claimCount: number;
   totalDamage: number;
   riskDistribution: { low?: number; medium?: number; high?: number };
+  averageCostByRisk?: { low?: number; medium?: number; high?: number };
   chartUrl: string | null;
   modelUsed: string;
   mapPoints?: MapPoint[];
@@ -66,7 +67,7 @@ const downloadPDF = async (result: PredictResult) => {
   addSectionGap();
 
   // RISK DISTRIBUTION
-  addTitle("Risk Distribution");
+  addTitle("Properties by Risk Level");
   addText(
     `Low: ${result.riskDistribution.low ?? 0} | ` +
     `Medium: ${result.riskDistribution.medium ?? 0} | ` +
@@ -75,7 +76,23 @@ const downloadPDF = async (result: PredictResult) => {
 
   addSectionGap();
 
-  // OPTIONAL: IMAGE ONLY FOR GRAPH (NOT ENTIRE PAGE)
+  addTitle("Avg. Cost per Property");
+  const fmtUSD = (v: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(v ?? 0);
+
+  addText(
+    `Low: ${fmtUSD(result.averageCostByRisk?.low ?? 0)} | ` +
+    `Medium: ${fmtUSD(result.averageCostByRisk?.medium ?? 0)} | ` +
+    `High: ${fmtUSD(result.averageCostByRisk?.high ?? 0)}`
+  );
+  
+  addSectionGap();
+
+
   if (result.chartUrl) {
     const img = await fetch(result.chartUrl)
       .then(res => res.blob())
@@ -217,6 +234,8 @@ const Analysis: React.FC = () => {
   const modelMeta = MODEL_META[modelType];
   const graphCopy = GRAPH_COPY[modelType];
   const mapPoints: MapPoint[] = apiResult.mapPoints ?? [];
+  const formatCurrency = (value?: number) =>
+    `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="analysis-container">
@@ -255,8 +274,12 @@ const Analysis: React.FC = () => {
       {/* RISK */}
       <div className={`fade-section ${showRisk ? "show" : ""}`}>
         <div className="risk-section">
-          <h3>Predicted Risk Score</h3>
+          <h3>Average Predicted Risk Score</h3>
           <p className="risk-value">{riskDisplay}/10</p>
+          <p className="risk-explainer">
+            This is the average score for all records in your uploaded CSV. Individual
+            properties may still fall into Low, Medium, or High risk.
+          </p>
 
           {/* BAR WRAPPER */}
           <div className="risk-bar-wrapper">
@@ -306,41 +329,67 @@ const Analysis: React.FC = () => {
       <div className={`fade-section ${showGraph ? "show" : ""}`}>
         <div className="graph-section">
           <h3>Analysis Summary</h3>
-            <div className="analysis-summary-grid">
-              <div className="summary-card">
-                <div className="summary-label">Records Scored</div>
-                <div className="summary-value">
-                  {apiResult.claimCount.toLocaleString()}
-                </div>
+          <div className="analysis-summary-grid">
+            <div className="summary-card">
+              <div className="summary-label">Records scored</div>
+              <div className="summary-value">
+                {apiResult.claimCount.toLocaleString()}
               </div>
-
-              <div className="summary-card">
-                <div className="summary-label">Total Damage Paid</div>
-                <div className="summary-value">
-                  ${apiResult.totalDamage.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                </div>
-              </div>
-
-              <div className="summary-card">
-                <div className="summary-label">Model Used</div>
-                <div className="summary-value summary-model">
-                  {apiResult.modelUsed}
-                </div>
-              </div>
-
-              {apiResult.riskDistribution && (
-                <div className="summary-card wide">
-                  <div className="summary-label">Risk Distribution</div>
-                  <div className="summary-value summary-distribution">
-                    <span><b>Low</b> {apiResult.riskDistribution.low ?? 0}</span>
-                    <span className="dot">•</span>
-                    <span><b>Medium</b> {apiResult.riskDistribution.medium ?? 0}</span>
-                    <span className="dot">•</span>
-                    <span><b>High</b> {apiResult.riskDistribution.high ?? 0}</span>
-                  </div>
-                </div>
-              )}
             </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Total damage</div>
+              <div className="summary-value">
+                {formatCurrency(apiResult.totalDamage)}
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-label">Model used</div>
+              <div className="summary-model">
+                {apiResult.modelUsed}
+              </div>
+            </div>
+
+            {apiResult.riskDistribution && (
+              <div className="summary-card wide">
+                <div className="summary-label">Properties by risk level</div>
+                <div className="summary-distribution">
+                  <span>
+                    <b>Low:</b> {apiResult.riskDistribution.low ?? 0}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>Medium:</b> {apiResult.riskDistribution.medium ?? 0}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>High:</b> {apiResult.riskDistribution.high ?? 0}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {apiResult.averageCostByRisk && (
+              <div className="summary-card wide">
+                <div className="summary-label">Avg. cost per property</div>
+                <div className="summary-distribution">
+                  <span>
+                    <b>Low:</b> {formatCurrency(apiResult.averageCostByRisk.low)}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>Medium:</b> {formatCurrency(apiResult.averageCostByRisk.medium)}
+                  </span>
+                  <span className="dot">|</span>
+                  <span>
+                    <b>High:</b> {formatCurrency(apiResult.averageCostByRisk.high)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
 

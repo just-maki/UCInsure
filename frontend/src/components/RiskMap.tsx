@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "./RiskMap.css";
 
@@ -68,14 +68,19 @@ const RiskMap: React.FC<RiskMapProps> = ({
           <CircleMarker
             key={i}
             center={[pt.lat, pt.lon]}
-            radius={5}
+            radius={4}
             pathOptions={{
               fillColor: RISK_COLOR[pt.label] ?? "#888",
-              color: "transparent",
-              weight: 0,
-              fillOpacity: 0.78,
+              color: RISK_COLOR[pt.label] ?? "#888",
+              weight: 0.75,
+              opacity: 0.78,
+              fillOpacity: 0.76,
             }}
           >
+            <Tooltip className="risk-tooltip" direction="top" opacity={1}>
+              <strong>{pt.label.toUpperCase()} RISK</strong>
+              <span>{(pt.risk * 10).toFixed(2)} / 10</span>
+            </Tooltip>
             <Popup className="risk-popup">
               <strong>{pt.label.toUpperCase()} RISK</strong>
               <br />

@@ -240,14 +240,18 @@ const Upload: React.FC = () => {
       {isAnalyzing && (
         <div className="analysis-overlay">
           <div className="analysis-modal">
-            <h3>Running {info?.label} Model…</h3>
+            <p className="analysis-kicker">Analysis in progress</p>
+            <h3>Running {info?.label} Model...</h3>
+            <p className="analysis-current-step">
+              Please wait while UCInsure scores your uploaded dataset.
+            </p>
             <div className="analysis-bar">
               <div
                 className="analysis-fill"
                 style={{ width: `${analysisProgress}%` }}
               />
             </div>
-            <p>{analysisProgress}%</p>
+            <p className="analysis-percent">{analysisProgress}% complete</p>
           </div>
         </div>
       )}
