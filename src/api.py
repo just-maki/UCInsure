@@ -1223,6 +1223,15 @@ def _risk_label(score_01: float) -> str:
     return "low"
 
 
+def _hurricane_risk_score_label(score_10: float) -> str:
+    """Classify uploaded hurricane risk_score values on the 1-10 scale."""
+    if score_10 > 7:
+        return "high"
+    if score_10 >= 3:
+        return "medium"
+    return "low"
+
+
 _MAP_SAMPLE = 3000  # max points returned to the frontend map
 
 # City anchors used when generating sample CSVs (avoids ocean placement)
@@ -1251,6 +1260,7 @@ def _build_map_points(
     scores: np.ndarray,
     lat_col: Optional[str],
     lon_col: Optional[str],
+    labels: Optional[list[str]] = None,
 ) -> list[dict]:
     """Return a list of {lat, lon, risk, label} dicts (max _MAP_SAMPLE rows)."""
     if lat_col is None or lon_col is None:
@@ -1258,7 +1268,7 @@ def _build_map_points(
 
     df = df.copy().reset_index(drop=True)
     df["_risk"] = scores
-    df["_label"] = [_risk_label(s) for s in scores]
+    df["_label"] = labels if labels is not None else [_risk_label(s) for s in scores]
 
     lats = pd.to_numeric(df[lat_col], errors="coerce")
     lons = pd.to_numeric(df[lon_col], errors="coerce")
@@ -1360,6 +1370,132 @@ def _first_positive_series(df: pd.DataFrame, columns: list[str]) -> pd.Series:
             if float(values.clip(lower=0).sum()) > 0:
                 return values
     return pd.Series(0.0, index=df.index)
+
+
+def _claim_cost_series(df: pd.DataFrame, fallback: Optional[pd.Series] = None) -> pd.Series:
+    """Return one per-record claim/damage cost series for cost summaries."""
+    for col in ("totalClaimAmount", "total_claim_amount", "totalDamage", "total_damage"):
+        if col in df.columns:
+            values = pd.to_numeric(df[col], errors="coerce").fillna(0).clip(lower=0)
+            if float(values.sum()) > 0:
+                return values
+
+    paid_cols = [
+        col for col in ("amountPaidOnBuildingClaim", "amountPaidOnContentsClaim")
+        if col in df.columns
+    ]
+    if paid_cols:
+        values = sum(
+            pd.to_numeric(df[col], errors="coerce").fillna(0).clip(lower=0)
+            for col in paid_cols
+        )
+        if float(values.sum()) > 0:
+            return values
+
+    for col in _DAMAGE_PAID_COLUMNS:
+        if col in df.columns:
+            values = pd.to_numeric(df[col], errors="coerce").fillna(0).clip(lower=0)
+            if float(values.sum()) > 0:
+                return values
+
+    if fallback is not None:
+        return pd.to_numeric(fallback, errors="coerce").fillna(0).clip(lower=0)
+
+    return pd.Series(0.0, index=df.index)
+
+
+def _average_cost_by_risk(labels: list[str], costs: pd.Series) -> dict:
+    """Average per-record claim/damage cost for Low, Medium, and High groups."""
+    summary = pd.DataFrame({
+        "label": labels,
+        "cost": pd.to_numeric(costs, errors="coerce").fillna(0).to_numpy(),
+    })
+    result = {}
+    for level in ("low", "medium", "high"):
+        value = summary.loc[summary["label"] == level, "cost"].mean()
+        result[level] = 0.0 if pd.isna(value) else float(value)
+    return result
+
+
+def _wildfire_damage_series(df: pd.DataFrame) -> Optional[pd.Series]:
+    """
+    Structure-level wildfire damage value.
+    Prefer assessed_value because it is per inspection/structure row. Exclude explicit
+    no-damage rows so totals represent damaged/inaccessible structures only.
+    """
+    if "assessed_value" not in df.columns:
+        return None
+
+    values = pd.to_numeric(df["assessed_value"], errors="coerce").fillna(0).clip(lower=0)
+    if "damage_level" in df.columns:
+        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False)
+        values = values.where(damaged_mask, 0)
+
+    if float(values.sum()) <= 0:
+        return None
+    return values
+
+
+def _wildfire_fire_level_loss_total(df: pd.DataFrame) -> float:
+    """
+    Fire-level financial_loss_million is repeated on many structure rows.
+    Deduplicate by fire before summing, then convert millions to dollars.
+    """
+    if "financial_loss_million" not in df.columns:
+        return 0.0
+
+    dedupe_col = "fire_name" if "fire_name" in df.columns else None
+    loss_df = df.drop_duplicates(dedupe_col) if dedupe_col else df
+    losses = pd.to_numeric(loss_df["financial_loss_million"], errors="coerce").fillna(0).clip(lower=0)
+    return float(losses.sum() * 1_000_000)
+
+
+def _future_projection(
+    model_key: str,
+    avg_risk: float,
+    total_damage: float,
+    dist: dict,
+    claim_count: int,
+    years: int = 5,
+) -> dict:
+    """
+    Conservative scenario projection from the uploaded portfolio baseline.
+    This is not a guaranteed forecast; it applies a simple hazard trend factor.
+    """
+    annual_trend = {
+        "flood": 0.025,
+        "hurricane": 0.030,
+        "wildfire": 0.040,
+    }.get(model_key, 0.025)
+
+    baseline_risk = max(float(avg_risk), 0.01)
+    baseline_damage = max(float(total_damage), 0.0)
+    baseline_high = float(dist.get("high", 0))
+    start_year = int(pd.Timestamp.today().year)
+
+    rows = []
+    for step in range(1, years + 1):
+        trend_multiplier = (1 + annual_trend) ** step
+        projected_risk = min(1.0, baseline_risk * trend_multiplier)
+        risk_multiplier = projected_risk / baseline_risk
+        projected_high = min(claim_count, round(baseline_high * risk_multiplier))
+        projected_damage = baseline_damage * risk_multiplier
+        rows.append({
+            "year": start_year + step,
+            "avgRisk": float(projected_risk),
+            "score10": float(projected_risk * 10),
+            "highRiskProperties": int(projected_high),
+            "estimatedDamage": float(projected_damage),
+        })
+
+    return {
+        "method": (
+            "Scenario projection based on the uploaded records, current model score, "
+            "and a conservative annual hazard trend. This is not a guaranteed forecast."
+        ),
+        "annualTrend": annual_trend,
+        "years": rows,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1494,6 +1630,14 @@ def _run_flood(df: pd.DataFrame) -> dict:
             scores += pipe.predict_proba(X_test)[:, idx]
     scores /= len(trained)
 
+    all_scores = np.zeros(len(X))
+    for name, pipe in trained.items():
+        classes = list(pipe.named_steps["clf"].classes_)
+        if "high" in classes:
+            idx = classes.index("high")
+            all_scores += pipe.predict_proba(X)[:, idx]
+    all_scores /= len(trained)
+
     # Score a geographic sample of the full dataset for the map
     df_map_sample = df_clean.sample(min(_MAP_SAMPLE, len(df_clean)), random_state=42)
     X_map = df_map_sample[[c for c in _FLOOD_FEATURES if c in df_map_sample.columns]].copy()
@@ -1519,12 +1663,16 @@ def _run_flood(df: pd.DataFrame) -> dict:
         lon_col="longitude" if "longitude" in df_map_sample.columns else None,
     )
 
-    avg_risk = float(scores.mean())
-    labels = [_risk_label(s) for s in scores]
+    avg_risk = float(all_scores.mean())
+    labels = [_risk_label(s) for s in all_scores]
     dist = {lv: labels.count(lv) for lv in ("low", "medium", "high")}
 
     total_damage = float(
         df_clean.get("amountPaidOnBuildingClaim", pd.Series(0.0)).fillna(0).sum()
+    )
+    average_cost_by_risk = _average_cost_by_risk(
+        labels,
+        _claim_cost_series(df_clean),
     )
 
     # Chart: claim count by year coloured by risk level
@@ -1562,6 +1710,7 @@ def _run_flood(df: pd.DataFrame) -> dict:
         "claimCount": len(df_clean),
         "totalDamage": total_damage,
         "riskDistribution": dist,
+        "averageCostByRisk": average_cost_by_risk,
         "chartUrl": chart_url,
         "modelUsed": "Flood — RF + GradientBoosting + ExtraTrees Ensemble",
         "mapPoints": map_points,
@@ -1839,34 +1988,33 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
 
     all_scores /= len(trained)
 
+    model_score_series = pd.Series(all_scores, index=df_clean.index).clip(0, 1)
+    report_score_series = model_score_series
+    labels = [_risk_label(s) for s in report_score_series]
+
+    if "risk_score" in df_clean.columns:
+        uploaded_score_10 = pd.to_numeric(df_clean["risk_score"], errors="coerce")
+        if uploaded_score_10.notna().any():
+            uploaded_score_10 = uploaded_score_10.fillna(uploaded_score_10.median()).clip(0, 10)
+            report_score_series = (uploaded_score_10 / 10).clip(0, 1)
+            labels = [_hurricane_risk_score_label(s) for s in uploaded_score_10]
+
     df_map = df_clean.sample(
         min(_MAP_SAMPLE, len(df_clean)),
         random_state=42,
     )
-
-    X_map = df_map[_HURRICANE_FEATURES]
-
-    map_scores = np.zeros(len(X_map))
-
-    for _, pipe in trained.items():
-        classes = list(pipe.named_steps["clf"].classes_)
-
-        if "high" in classes:
-            idx = classes.index("high")
-            map_scores += pipe.predict_proba(X_map)[:, idx]
-
-    map_scores /= len(trained)
+    map_scores = report_score_series.loc[df_map.index].to_numpy()
+    map_labels = [labels[df_clean.index.get_loc(idx)] for idx in df_map.index]
 
     map_points = _build_map_points(
         df_map.reset_index(drop=True),
         map_scores,
         "latitude",
         "longitude",
+        labels=map_labels,
     )
 
-    avg_risk = float(all_scores.mean())
-
-    labels = [_risk_label(s) for s in all_scores]
+    avg_risk = float(report_score_series.mean())
 
     dist = {
         lv: labels.count(lv)
@@ -1883,9 +2031,13 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
             "HRCN_EXPB",
         ],
     )
-    hurricane_risk = risk_index.reindex(df_clean.index).fillna(0)
+    hurricane_risk = report_score_series.reindex(df_clean.index).fillna(0)
     estimated_hurricane_damage = hurricane_exposure * hurricane_risk * 0.20
     total_damage = _damage_total_from_columns(df_clean, estimated_hurricane_damage)
+    average_cost_by_risk = _average_cost_by_risk(
+        labels,
+        _claim_cost_series(df_clean, estimated_hurricane_damage),
+    )
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
     for chart_ax in axes:
@@ -1901,7 +2053,7 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
     axes[0].set_title("Predicted Risk Categories", color="white", fontsize=11, fontweight="bold")
 
     plot_df = df_clean.copy()
-    plot_df["_score"] = all_scores
+    plot_df["_score"] = report_score_series.to_numpy()
     plot_df["_label"] = labels
     if len(plot_df) > 600:
         plot_df = plot_df.sample(600, random_state=42)
@@ -1951,6 +2103,7 @@ def _run_hurricane(df: pd.DataFrame) -> dict:
         "claimCount": len(df_clean),
         "totalDamage": total_damage,
         "riskDistribution": dist,
+        "averageCostByRisk": average_cost_by_risk,
         "chartUrl": chart_url,
         "modelUsed": "Hurricane — RF + GradientBoosting + ExtraTrees Ensemble",
         "mapPoints": map_points,
@@ -2153,6 +2306,7 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
     classes = list(rf.classes_)
     weight_vector = np.array([_WILDFIRE_WEIGHT.get(c, 0.10) for c in classes])
     scores = (proba @ weight_vector).clip(0, 1)
+    all_scores = (rf.predict_proba(X) @ weight_vector).clip(0, 1)
 
     # Geographic map points — try common lat/lon column names in CAL FIRE data
     lat_col = next(
@@ -2176,13 +2330,31 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
         df_map_wf.reset_index(drop=True), map_scores_wf, lat_col, lon_col
     )
 
-    avg_risk = float(scores.mean())
-    labels = [_risk_label(s) for s in scores]
+    avg_risk = float(all_scores.mean())
+    labels = [_risk_label(s) for s in all_scores]
     dist = {lv: labels.count(lv) for lv in ("low", "medium", "high")}
-    acres = pd.to_numeric(df["gis_acres"], errors="coerce").fillna(0)
-    acre_cost = df["risk_level"].map(_WILDFIRE_DAMAGE_PER_ACRE).fillna(2500.0)
-    estimated_wildfire_damage = acres * acre_cost
-    total_damage = _damage_total_from_columns(df, estimated_wildfire_damage)
+    assessed_damage = _wildfire_damage_series(df)
+    if assessed_damage is not None:
+        wildfire_damage_costs = assessed_damage
+        total_damage = float(assessed_damage.sum())
+    else:
+        fire_level_loss_total = _wildfire_fire_level_loss_total(df)
+        if fire_level_loss_total > 0:
+            wildfire_damage_costs = pd.Series(
+                fire_level_loss_total / len(df),
+                index=df.index,
+            )
+            total_damage = fire_level_loss_total
+        else:
+            acres = pd.to_numeric(df["gis_acres"], errors="coerce").fillna(0)
+            acre_cost = df["risk_level"].map(_WILDFIRE_DAMAGE_PER_ACRE).fillna(2500.0)
+            wildfire_damage_costs = acres * acre_cost
+            total_damage = _damage_total_from_columns(df, wildfire_damage_costs)
+
+    average_cost_by_risk = _average_cost_by_risk(
+        labels,
+        wildfire_damage_costs,
+    )
 
     # Chart: fire count by year, coloured by risk level
     fig, ax = plt.subplots(figsize=(9, 4))
@@ -2223,6 +2395,7 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
         "claimCount": len(df),
         "totalDamage": total_damage,
         "riskDistribution": dist,
+        "averageCostByRisk": average_cost_by_risk,
         "chartUrl": chart_url,
         "modelUsed": "Wildfire — Random Forest with Actuarial Weights",
         "mapPoints": map_points,

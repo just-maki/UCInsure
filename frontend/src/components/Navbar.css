@@ -4,7 +4,10 @@
   align-items: center;
   justify-content: space-between;
   background-color: rgba(26,26,26,0.85);
-  padding: 1rem 2rem;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  padding: 1rem max(2rem, calc((100vw - 1126px) / 2 + 2rem));
+  box-sizing: border-box;
   position: sticky;
   top: 0;
   z-index: 1600;
@@ -265,6 +268,7 @@
 
 /* Mobile responsive */
 @media screen and (max-width: 768px) {
+  .navbar { padding: 1rem; }
   .desktop-menu,
   .desktop-buttons { display: none !important; }
   .mobile-menu-button { display: block !important; }

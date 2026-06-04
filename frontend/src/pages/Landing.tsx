@@ -3,6 +3,8 @@ import { geoAlbersUsa, geoPath } from "d3-geo";
 import { useLocation, useNavigate } from "react-router-dom";
 import { feature } from "topojson-client";
 import usAtlas from "us-atlas/states-10m.json";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFireFlameCurved, faDroplet, faWind } from "@fortawesome/free-solid-svg-icons";
 import "./Landing.css";
 
 type AtlasFeature = {
@@ -84,9 +86,9 @@ const Landing: React.FC = () => {
 
   const regions: RegionName[] = ["East Coast", "West Coast", "Midwest", "Gulf Coast", "Southeast Coast"];
   const models = [
-    { name: "Flood", accent: "flood" as const },
-    { name: "Wildfire", accent: "wildfire" as const },
-    { name: "Hurricane", accent: "hurricane" as const },
+    { name: "Flood", accent: "flood" as const, icon: faDroplet },
+    { name: "Wildfire", accent: "wildfire" as const, icon: faFireFlameCurved },
+    { name: "Hurricane", accent: "hurricane" as const, icon: faWind },
   ];
   const supportedModels = ["Flood Model", "Wildfire Model", "Hurricane Model"];
   const valueProps = [
@@ -282,7 +284,9 @@ const Landing: React.FC = () => {
                   className={`model-card ${model.accent} ${selectedModel === model.accent ? "is-active" : ""}`}
                   onClick={() => setSelectedModel((cur) => cur === model.accent ? null : model.accent)}
                 >
-                  <span className="model-icon" />
+                  <span className="model-icon">
+                    <FontAwesomeIcon icon={model.icon} />
+                  </span>
                   {model.name}
                 </button>
               ))}
