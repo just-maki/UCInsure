@@ -33,7 +33,16 @@
 .risk-value {
   font-size: 2rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.risk-explainer {
+  max-width: 520px;
+  margin: 0 auto 1rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  opacity: 0.86;
 }
 
 /* IMPORTANT: anchor system */
@@ -143,6 +152,57 @@
 
 .graph-image:hover {
   transform: scale(1.03);
+}
+
+.projection-section {
+  margin-top: 3rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.72));
+  text-align: left;
+}
+
+.projection-section h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.projection-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1.2rem;
+}
+
+.projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.projection-table th,
+.projection-table td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  text-align: left;
+}
+
+.projection-table th {
+  color: #c4f6d1;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.projection-table td {
+  color: #f8fafc;
+}
+
+.projection-note {
+  margin: 0.9rem 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 /* FADE */

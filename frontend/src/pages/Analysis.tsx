@@ -8,6 +8,7 @@ interface PredictResult {
   claimCount: number;
   totalDamage: number;
   riskDistribution: { low?: number; medium?: number; high?: number };
+  averageCostByRisk?: { low?: number; medium?: number; high?: number };
   chartUrl: string | null;
   modelUsed: string;
   mapPoints?: MapPoint[];
@@ -147,6 +148,8 @@ const Analysis: React.FC = () => {
   const modelMeta = MODEL_META[modelType];
   const graphCopy = GRAPH_COPY[modelType];
   const mapPoints: MapPoint[] = apiResult.mapPoints ?? [];
+  const formatCurrency = (value?: number) =>
+    `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="analysis-container">
@@ -175,8 +178,12 @@ const Analysis: React.FC = () => {
       {/* RISK */}
       <div className={`fade-section ${showRisk ? "show" : ""}`}>
         <div className="risk-section">
-          <h3>Predicted Risk Score</h3>
+          <h3>Average Predicted Risk Score</h3>
           <p className="risk-value">{riskDisplay}/10</p>
+          <p className="risk-explainer">
+            This is the average score for all records in your uploaded CSV. Individual
+            properties may still fall into Low, Medium, or High risk.
+          </p>
 
           {/* BAR WRAPPER */}
           <div className="risk-bar-wrapper">
@@ -229,15 +236,25 @@ const Analysis: React.FC = () => {
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <tbody>
               <tr><td><strong>Records scored</strong></td><td>{apiResult.claimCount.toLocaleString()}</td></tr>
-              <tr><td><strong>Total damage paid</strong></td><td>${apiResult.totalDamage.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td></tr>
+              <tr><td><strong>Total damage paid/estimated</strong></td><td>{formatCurrency(apiResult.totalDamage)}</td></tr>
               <tr><td><strong>Model</strong></td><td>{apiResult.modelUsed}</td></tr>
               {apiResult.riskDistribution && (
                 <tr>
-                  <td><strong>Risk distribution</strong></td>
+                  <td><strong>Properties by risk level</strong></td>
                   <td>
                     Low: {apiResult.riskDistribution.low ?? 0} &nbsp;|&nbsp;
                     Medium: {apiResult.riskDistribution.medium ?? 0} &nbsp;|&nbsp;
                     High: {apiResult.riskDistribution.high ?? 0}
+                  </td>
+                </tr>
+              )}
+              {apiResult.averageCostByRisk && (
+                <tr>
+                  <td><strong>Avg. claim/damage cost per property</strong></td>
+                  <td>
+                    Low: {formatCurrency(apiResult.averageCostByRisk.low)} &nbsp;|&nbsp;
+                    Medium: {formatCurrency(apiResult.averageCostByRisk.medium)} &nbsp;|&nbsp;
+                    High: {formatCurrency(apiResult.averageCostByRisk.high)}
                   </td>
                 </tr>
               )}
