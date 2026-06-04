@@ -1,0 +1,112 @@
+.risk-map-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
+
+.risk-map-container {
+  height: 480px;
+  width: 100%;
+  background: #111;
+}
+
+/* ── Empty state overlay ───────────────────────────────────── */
+.map-empty-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.map-empty-overlay span {
+  background: rgba(20, 20, 20, 0.85);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.7rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  border: 1px solid #333;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Legend ────────────────────────────────────────────────── */
+.map-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: rgba(15, 15, 15, 0.88);
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  backdrop-filter: blur(4px);
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+}
+
+.map-legend-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-legend-count {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  margin-left: 0.3rem;
+  border-left: 1px solid #444;
+  padding-left: 0.6rem;
+}
+
+/* ── Leaflet popup dark theme ──────────────────────────────── */
+.risk-tooltip {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  background: rgba(10, 15, 24, 0.94);
+  color: #f8fafc;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+
+.risk-tooltip.leaflet-tooltip-top::before {
+  border-top-color: rgba(10, 15, 24, 0.94);
+}
+
+.risk-tooltip strong {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.risk-tooltip span {
+  display: block;
+  margin-top: 0.15rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+}
+
+.risk-popup .leaflet-popup-content-wrapper {
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.risk-popup .leaflet-popup-tip {
+  background: #1a1a1a;
+}

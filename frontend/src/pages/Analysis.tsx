@@ -1,63 +1,189 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import RiskMap, { type MapPoint } from "../components/RiskMap";
 import "./Analysis.css";
-import demoGraph from "../assets/demo.png";
+
+interface PredictResult {
+  avgRisk: number;
+  claimCount: number;
+  totalDamage: number;
+  riskDistribution: { low?: number; medium?: number; high?: number };
+  averageCostByRisk?: { low?: number; medium?: number; high?: number };
+  chartUrl: string | null;
+  modelUsed: string;
+  mapPoints?: MapPoint[];
+}
+
+const STORAGE_KEY = "ucinsure_analysis";
+
+const MODEL_META: Record<string, { label: string; cls: string }> = {
+  flood:     { label: "Flood",     cls: "badge-flood"     },
+  hurricane: { label: "Hurricane", cls: "badge-hurricane" },
+  wildfire:  { label: "Wildfire",  cls: "badge-wildfire"  },
+};
+
+const GRAPH_COPY: Record<string, { title: string; description: string }> = {
+  flood: {
+    title: "Flood Risk Chart",
+    description:
+      "This chart summarizes flood claim records by risk level, using the available claim year information when present.",
+  },
+  hurricane: {
+    title: "Hurricane Risk Drivers",
+    description:
+      "This chart shows predicted hurricane risk categories and how risk relates to storm-track distance, property wind speed, and exposure.",
+  },
+  wildfire: {
+    title: "Wildfire Risk Chart",
+    description:
+      "This chart summarizes wildfire incident counts by risk level, using fire year information when available.",
+  },
+};
+
+function getModelType(modelUsed: string) {
+  const m = modelUsed.toLowerCase();
+  if (m.startsWith("flood"))     return "flood";
+  if (m.startsWith("hurricane")) return "hurricane";
+  return "wildfire";
+}
 
 const Analysis: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const incoming = (location.state as { result?: PredictResult } | null)?.result ?? null;
+
+  const [apiResult, setApiResult] = useState<PredictResult | null>(() => {
+    if (incoming) return incoming;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as PredictResult) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Persist whenever a fresh result arrives from Upload
+  // Falls back to saving without chartUrl if localStorage quota is exceeded
+  const _persist = (result: PredictResult) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    } catch {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...result, chartUrl: null }));
+      } catch { /* storage unavailable */ }
+    }
+  };
+
+  useEffect(() => {
+    if (!incoming) return;
+    setApiResult(incoming);
+    _persist(incoming);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleClear = () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setApiResult(null);
+  };
+
   const [showRisk, setShowRisk] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  const [animatedScore, setAnimatedScore] = useState(0);
 
   const barRef = useRef<HTMLDivElement>(null);
 
-  const riskScoreRaw = 0.9936551249772247;
-  const riskScore = riskScoreRaw * 10;
+  const riskScore = (apiResult?.avgRisk ?? 0) * 10;
   const riskDisplay = riskScore.toFixed(2);
-
-  const [animatedScore, setAnimatedScore] = useState(0);
+  const graphSrc = apiResult?.chartUrl ?? "";
 
   // position clamped 0–100
   const riskPosition = ((animatedScore - 1) / 9) * 90 + 5;
   const riskPositionClamped = Math.min(95, Math.max(5, riskPosition));
 
-
-
   useEffect(() => {
-    setTimeout(() => setShowRisk(true), 300);
-    setTimeout(() => setShowGraph(true), 800);
+    if (!apiResult) return;
+    setShowRisk(false);
+    setShowGraph(false);
+    setAnimatedScore(0);
+
+    const end = apiResult.avgRisk * 10;
+    const t1 = setTimeout(() => setShowRisk(true), 300);
+    const t2 = setTimeout(() => setShowGraph(true), 800);
 
     let current = 0;
-    const end = riskScore;
-
-    const duration = 1200;
     const steps = 60;
-    const increment = (end - current) / steps;
-
+    const increment = end / steps;
     let i = 0;
-
     const interval = setInterval(() => {
       current += increment;
       i++;
-
-      if (i >= steps) {
-        current = end;
-        clearInterval(interval);
-      }
-
+      if (i >= steps) { current = end; clearInterval(interval); }
       setAnimatedScore(current);
-    }, duration / steps);
+    }, 1200 / steps);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
+  }, [apiResult]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // No data: send user back to upload
+  if (!apiResult) {
+    return (
+      <div className="analysis-container">
+        <h2>No Analysis Data</h2>
+        <p style={{ opacity: 0.7, marginTop: "1rem" }}>
+          Upload a dataset and run the analysis to see results here.
+        </p>
+        <button
+          className="analyze-btn btn"
+          style={{ marginTop: "2rem" }}
+          onClick={() => navigate("/upload")}
+        >
+          Go to Upload
+        </button>
+      </div>
+    );
+  }
+
+  const modelType = getModelType(apiResult.modelUsed);
+  const modelMeta = MODEL_META[modelType];
+  const graphCopy = GRAPH_COPY[modelType];
+  const mapPoints: MapPoint[] = apiResult.mapPoints ?? [];
+  const formatCurrency = (value?: number) =>
+    `$${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="analysis-container">
-      <h2>Risk Analysis</h2>
+      <div className="analysis-header">
+        <div className="analysis-title-row">
+          <h2>Risk Analysis</h2>
+          <span className={`model-badge ${modelMeta.cls}`}>{modelMeta.label}</span>
+        </div>
+        <button className="clear-btn" onClick={handleClear} title="Remove this analysis">
+          ✕ Clear
+        </button>
+      </div>
+
+      {/* MAP */}
+      <div className={`fade-section map-fade ${showRisk ? "show" : ""}`}>
+        <div className="map-section">
+          <h3>Geographic Risk Map</h3>
+          <p className="graph-desc">
+            Each point represents a scored record, coloured by risk level.
+            {mapPoints.length === 0 && " (No coordinate data in this dataset.)"}
+          </p>
+          <RiskMap points={mapPoints} fitPoints={mapPoints.length > 0} />
+        </div>
+      </div>
 
       {/* RISK */}
       <div className={`fade-section ${showRisk ? "show" : ""}`}>
         <div className="risk-section">
-          <h3>Predicted Risk Score</h3>
+          <h3>Average Predicted Risk Score</h3>
           <p className="risk-value">{riskDisplay}/10</p>
+          <p className="risk-explainer">
+            This is the average score for all records in your uploaded CSV. Individual
+            properties may still fall into Low, Medium, or High risk.
+          </p>
 
           {/* BAR WRAPPER */}
           <div className="risk-bar-wrapper">
@@ -89,14 +215,13 @@ const Analysis: React.FC = () => {
       {/* GRAPH */}
       <div className={`fade-section ${showGraph ? "show" : ""}`}>
         <div className="graph-section">
-          <h3>Model Performance</h3>
+          <h3>{graphCopy.title}</h3>
           <p className="graph-desc">
-            This graph displays how the model’s predicted risk scores compare
-            to actual risk levels over the past 5 years.
+            {graphCopy.description}
           </p>
 
           <img
-            src={demoGraph}
+            src={graphSrc}
             alt="Risk graph"
             className="graph-image"
             onClick={() => setZoomed(true)}
@@ -104,10 +229,44 @@ const Analysis: React.FC = () => {
         </div>
       </div>
 
+      {/* API METADATA */}
+      <div className={`fade-section ${showGraph ? "show" : ""}`}>
+        <div className="graph-section">
+          <h3>Analysis Summary</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <tbody>
+              <tr><td><strong>Records scored</strong></td><td>{apiResult.claimCount.toLocaleString()}</td></tr>
+              <tr><td><strong>Total damage paid/estimated</strong></td><td>{formatCurrency(apiResult.totalDamage)}</td></tr>
+              <tr><td><strong>Model</strong></td><td>{apiResult.modelUsed}</td></tr>
+              {apiResult.riskDistribution && (
+                <tr>
+                  <td><strong>Properties by risk level</strong></td>
+                  <td>
+                    Low: {apiResult.riskDistribution.low ?? 0} &nbsp;|&nbsp;
+                    Medium: {apiResult.riskDistribution.medium ?? 0} &nbsp;|&nbsp;
+                    High: {apiResult.riskDistribution.high ?? 0}
+                  </td>
+                </tr>
+              )}
+              {apiResult.averageCostByRisk && (
+                <tr>
+                  <td><strong>Avg. claim/damage cost per property</strong></td>
+                  <td>
+                    Low: {formatCurrency(apiResult.averageCostByRisk.low)} &nbsp;|&nbsp;
+                    Medium: {formatCurrency(apiResult.averageCostByRisk.medium)} &nbsp;|&nbsp;
+                    High: {formatCurrency(apiResult.averageCostByRisk.high)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* ZOOM */}
       {zoomed && (
         <div className="zoom-overlay" onClick={() => setZoomed(false)}>
-          <img src={demoGraph} className="zoomed-image" />
+          <img src={graphSrc} className="zoomed-image" />
         </div>
       )}
     </div>

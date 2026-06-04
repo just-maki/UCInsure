@@ -4,6 +4,135 @@
   color: white;
 }
 
+.upload-subtitle {
+  opacity: 0.7;
+  margin-top: 0.4rem;
+  font-size: 1rem;
+}
+
+/* ── Model selection cards ──────────────────────────────────── */
+.model-cards {
+  display: flex;
+  gap: 1.2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.upload-container .model-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 220px;
+  padding: 1.6rem 1rem;
+  background: rgba(30, 30, 30, 0.9);
+  border: 2px solid #333;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+  color: white;
+  text-align: center;
+}
+
+.upload-container .model-card:hover {
+  border-color: var(--card-accent, #555);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--card-accent, #555) 40%, transparent);
+  transform: translateY(-3px);
+}
+
+.upload-container .model-card.selected {
+  border-color: var(--card-accent, #555);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--card-accent, #555) 55%, transparent);
+  background: color-mix(in srgb, var(--card-accent, #555) 12%, #1a1a1a);
+}
+
+.upload-container .model-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.model-label {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.model-desc {
+  font-size: 0.82rem;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+.model-source {
+  font-size: 0.75rem;
+  opacity: 0.5;
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+/* ── Step 2 heading ─────────────────────────────────────────── */
+.upload-step-title {
+  margin-top: 2.5rem;
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+/* ── File ready state inside drop-zone ─────────────────────── */
+.file-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.file-name-display {
+  font-size: 1rem;
+  word-break: break-all;
+}
+
+.remove-file-btn {
+  background: transparent;
+  border: 1px solid #666;
+  color: #aaa;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.remove-file-btn:hover {
+  color: #ff5555;
+  border-color: #ff5555;
+}
+
+/* ── Expected data source hint ──────────────────────────────── */
+.expected-source {
+  margin-top: 0.8rem;
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.sample-download-link {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  color: #64b5f6;
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.sample-download-link:hover {
+  opacity: 1;
+}
+
+/* ── Upload progress bar (below drop zone) ──────────────────── */
+.upload-progress-bar {
+  margin-top: 0.8rem;
+}
+
 /* Drop zone */
 .drop-zone {
   margin-top: 2rem;
@@ -198,11 +327,34 @@
 
 .analysis-modal {
   background: #1a1a1a;
-  padding: 2rem;
-  border-radius: 12px;
-  width: 300px;
+  padding: 1.8rem;
+  border-radius: 16px;
+  width: min(420px, calc(100vw - 2rem));
   text-align: center;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.analysis-kicker {
+  margin: 0 0 0.4rem;
+  color: #5eead4;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.analysis-modal h3 {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.analysis-current-step {
+  min-height: 1.5rem;
+  margin-top: 0.7rem;
+  color: #dbeafe;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .analysis-bar {
@@ -218,6 +370,70 @@
   height: 100%;
   background: linear-gradient(to right, green, yellow, red);
   transition: width 0.2s ease;
+}
+
+.analysis-percent {
+  margin-top: 0.65rem;
+  color: #aebbd0;
+  font-size: 0.86rem;
+}
+
+.analysis-steps {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  text-align: left;
+}
+
+.analysis-step {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.48);
+  color: #8fa0b6;
+}
+
+.analysis-step span {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(51, 65, 85, 0.82);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.analysis-step p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.analysis-step.is-active {
+  border-color: rgba(94, 234, 212, 0.38);
+  background: rgba(20, 184, 166, 0.12);
+  color: #ecfeff;
+}
+
+.analysis-step.is-active span {
+  background: #14b8a6;
+  color: #042f2e;
+}
+
+.analysis-step.is-done {
+  color: #cbd5e1;
+}
+
+.analysis-step.is-done span {
+  background: rgba(34, 197, 94, 0.24);
+  color: #86efac;
 }
 
 /* Smooth fade */

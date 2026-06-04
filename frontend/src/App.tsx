@@ -4,6 +4,7 @@ import Footer from "./components/Footer"
 import Landing from "./pages/Landing";
 import Upload from "./pages/Upload";
 import Analysis from "./pages/Analysis";
+import About from "./pages/About";
 
 
 function App() {
@@ -14,8 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/upload" element={<Upload />} />
-        <Route path="/analysis" element={<Analysis />} />
-      </Routes>
+        <Route path="/analysis" element={<Analysis />} />          <Route path="/about" element={<About />} />      </Routes>
 
       <Footer />
     </Router>

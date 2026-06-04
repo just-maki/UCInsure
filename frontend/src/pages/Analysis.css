@@ -2,6 +2,24 @@
   padding: 3rem 2rem;
   text-align: center;
   color: white;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── Map section ───────────────────────────────────────────── */
+.map-section {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.map-section h3 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.map-fade {
+  /* slightly earlier delay so map appears before the score bar */
+  transition-delay: 0s;
 }
 
 /* RISK */
@@ -15,7 +33,16 @@
 .risk-value {
   font-size: 2rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.risk-explainer {
+  max-width: 520px;
+  margin: 0 auto 1rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  opacity: 0.86;
 }
 
 /* IMPORTANT: anchor system */
@@ -127,6 +154,57 @@
   transform: scale(1.03);
 }
 
+.projection-section {
+  margin-top: 3rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.72));
+  text-align: left;
+}
+
+.projection-section h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.projection-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1.2rem;
+}
+
+.projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.projection-table th,
+.projection-table td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  text-align: left;
+}
+
+.projection-table th {
+  color: #c4f6d1;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.projection-table td {
+  color: #f8fafc;
+}
+
+.projection-note {
+  margin: 0.9rem 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* FADE */
 .fade-section {
   opacity: 0;
@@ -154,4 +232,51 @@
   max-width: 90%;
   max-height: 90%;
   border-radius: 10px;
+}
+
+/* ── Analysis page header ───────────────────────────────────── */
+.analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.analysis-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.analysis-title-row h2 { margin: 0; }
+
+.model-badge {
+  display: inline-block;
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge-flood     { background: rgba(33,150,243,0.18); color: #64b5f6; border: 1px solid rgba(33,150,243,0.38); }
+.badge-hurricane { background: rgba(156,39,176,0.18); color: #ce93d8; border: 1px solid rgba(156,39,176,0.38); }
+.badge-wildfire  { background: rgba(255,87,34,0.18);  color: #ff8a65; border: 1px solid rgba(255,87,34,0.38); }
+
+.clear-btn {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgba(239,68,68,0.38);
+  border-radius: 8px;
+  background: rgba(239,68,68,0.08);
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.clear-btn:hover {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.65);
 }
