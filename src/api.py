@@ -1416,25 +1416,39 @@ def _average_cost_by_risk(labels: list[str], costs: pd.Series) -> dict:
         result[level] = 0.0 if pd.isna(value) else float(value)
     return result
 
-
 def _wildfire_damage_series(df: pd.DataFrame) -> Optional[pd.Series]:
     """
-    Structure-level wildfire damage value.
-    Prefer assessed_value because it is per inspection/structure row. Exclude explicit
-    no-damage rows so totals represent damaged/inaccessible structures only.
+    Structure-level wildfire damage value using actuarial damage factors.
+    Multiplies assessed_value by the fraction of damage actually sustained
+    per damage_level, so Low < Medium < High ordering is preserved.
     """
     if "assessed_value" not in df.columns:
         return None
 
+    # Actuarial factors: midpoint of each damage band
+    _DAMAGE_FACTORS = {
+        "DESTROYED (>50%)" : 1.000,
+        "MAJOR (25-50%)"   : 0.375,
+        "MINOR (10-25%)"   : 0.175,
+        "AFFECTED (>0-10%)": 0.050,
+        "INACCESSIBLE"     : 0.150,
+        "NO DAMAGE"        : 0.000,
+    }
+
     values = pd.to_numeric(df["assessed_value"], errors="coerce").fillna(0).clip(lower=0)
+
     if "damage_level" in df.columns:
-        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False)
+        factors = df["damage_level"].map(_DAMAGE_FACTORS).fillna(0)
+        values = values * factors
+    else:
+        # fallback: exclude NO DAMAGE rows, keep full assessed_value
+        damaged_mask = ~df["damage_level"].astype(str).str.upper().str.contains("NO DAMAGE", na=False) \
+            if "damage_level" in df.columns else pd.Series(True, index=df.index)
         values = values.where(damaged_mask, 0)
 
     if float(values.sum()) <= 0:
         return None
     return values
-
 
 def _wildfire_fire_level_loss_total(df: pd.DataFrame) -> float:
     """
@@ -2361,24 +2375,18 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
     _dark_ax(ax, fig)
 
     if "fire_year" in df.columns:
-        # Use model-predicted labels (lowercase) aligned to df's index
-        label_series = pd.Series(labels, index=df.index)
-        df_plot = df.copy()
-        df_plot["predicted_risk"] = label_series
-        df_plot["fire_year"] = pd.to_numeric(df_plot["fire_year"], errors="coerce")
-        df_plot = df_plot.dropna(subset=["fire_year"])
-        df_plot["fire_year"] = df_plot["fire_year"].astype(int)
-
+        df["fire_year"] = pd.to_numeric(df["fire_year"], errors="coerce")
+        df["predicted_risk"] = [l.capitalize() for l in labels]
         year_data = (
-            df_plot.groupby(["fire_year", "predicted_risk"])
+            df.groupby(["fire_year", "predicted_risk"])
             .size()
             .unstack(fill_value=0)
         )
-        for level, color in [("low", "green"), ("medium", "gold"), ("high", "crimson")]:
+        for level, color in [("Low", "green"), ("Medium", "gold"), ("High", "crimson")]:
             if level in year_data.columns:
                 ax.plot(
                     year_data.index, year_data[level],
-                    color=color, label=level.capitalize(), linewidth=2,
+                    color=color, label=level, linewidth=2,
                 )
         ax.set_xlabel("Fire Year", color="white")
         ax.set_ylabel("Incident Count", color="white")
@@ -2391,9 +2399,6 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
         )
         ax.set_ylabel("Count", color="white")
 
-    ax.tick_params(axis="both", colors="white", which="both")
-    ax.xaxis.label.set_color("white")
-    ax.yaxis.label.set_color("white")
     ax.set_title(
         "Wildfire Risk Distribution",
         color="white", fontsize=13, fontweight="bold",
