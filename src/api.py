@@ -2361,17 +2361,24 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
     _dark_ax(ax, fig)
 
     if "fire_year" in df.columns:
-        df["fire_year"] = pd.to_numeric(df["fire_year"], errors="coerce")
+        # Use model-predicted labels (lowercase) aligned to df's index
+        label_series = pd.Series(labels, index=df.index)
+        df_plot = df.copy()
+        df_plot["predicted_risk"] = label_series
+        df_plot["fire_year"] = pd.to_numeric(df_plot["fire_year"], errors="coerce")
+        df_plot = df_plot.dropna(subset=["fire_year"])
+        df_plot["fire_year"] = df_plot["fire_year"].astype(int)
+
         year_data = (
-            df.groupby(["fire_year", "risk_level"])
+            df_plot.groupby(["fire_year", "predicted_risk"])
             .size()
             .unstack(fill_value=0)
         )
-        for level, color in [("Low", "green"), ("Medium", "gold"), ("High", "crimson")]:
+        for level, color in [("low", "green"), ("medium", "gold"), ("high", "crimson")]:
             if level in year_data.columns:
                 ax.plot(
                     year_data.index, year_data[level],
-                    color=color, label=level, linewidth=2,
+                    color=color, label=level.capitalize(), linewidth=2,
                 )
         ax.set_xlabel("Fire Year", color="white")
         ax.set_ylabel("Incident Count", color="white")
@@ -2384,6 +2391,9 @@ def _run_wildfire(df: pd.DataFrame) -> dict:
         )
         ax.set_ylabel("Count", color="white")
 
+    ax.tick_params(axis="both", colors="white", which="both")
+    ax.xaxis.label.set_color("white")
+    ax.yaxis.label.set_color("white")
     ax.set_title(
         "Wildfire Risk Distribution",
         color="white", fontsize=13, fontweight="bold",
