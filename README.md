@@ -48,6 +48,7 @@ The target users are:
 - Matplotlib chart generation
 - Interactive Leaflet risk map
 - Local storage of latest analysis result
+- Downloadable PDF report from the analysis page
 - Project notebooks for model exploration
 - Pytest test structure
 
@@ -246,7 +247,7 @@ No production deployment URL is currently configured.
 - The frontend depends on the backend running locally.
 - The map uses external map tiles, so internet access may be required for full map rendering.
 - Some notebooks and archived files are exploratory or historical.
-- The app does not currently include user authentication.
+- Authentication is local-only and stored in the browser, not connected to a production database.
 - The app does not currently use database persistence.
 - Analysis results are stored in browser local storage.
 
